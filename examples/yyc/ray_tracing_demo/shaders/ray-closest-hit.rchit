@@ -22,26 +22,23 @@ InstanceData getInstanceData(int instanceId){
   return sceneDesc.i[instanceId];
 }
 
-uint getObjId(InstanceData instanceData){
-  return uint(instanceData.objId);
+uint getIndexOffset(InstanceData instanceData){
+  return uint(instanceData.indexOffset);
 }
 
-uint getPrimitiveCount(InstanceData instanceData){
-  return uint(instanceData.primitiveCount);
+uint getVertexOffset(InstanceData instanceData){
+  return uint(instanceData.vertexOffset);
 }
 
-uint getIndexCount(InstanceData instanceData){
-  return uint(instanceData.indexCount);
+
+ivec3 getTriangleIndices(uint indexOffset, uint primitiveId){
+  return ivec3(indices.i[indexOffset + 3 * primitiveId + 0],   
+                    indices.i[indexOffset + 3 * primitiveId + 1],   
+                    indices.i[indexOffset + 3 * primitiveId + 2]);
 }
 
-ivec3 getTriangleIndices(uint objId, uint primitiveCount, uint primitiveId){
-  return ivec3(indices.i[objId * 3 * primitiveCount + 3 * primitiveId + 0],   
-                    indices.i[objId * 3 * primitiveCount + 3 * primitiveId + 1],   
-                    indices.i[objId * 3 * primitiveCount + 3 * primitiveId + 2]);
-}
-
-Vertex getTriangleVertex(uint objId, uint indexCount, uint index){
-  return vertices.v[objId * indexCount + index];
+Vertex getTriangleVertex(uint vertexOffset, uint index){
+  return vertices.v[vertexOffset + index];
 }
 
 void main() {
@@ -53,18 +50,17 @@ void main() {
 
 
   // InstanceData instanceData = getInstanceData(0);
-  uint objId = getObjId(instanceData);
-  uint primitiveCount = getPrimitiveCount(instanceData);
-  uint indexCount = getIndexCount(instanceData);
+  uint indexOffset = getIndexOffset(instanceData);
+  uint vertexOffset = getVertexOffset(instanceData);
 
   // Indices of the triangle
   // ivec3 ind = getTriangleIndices(objId, primitiveCount, 0);
-  ivec3 ind = getTriangleIndices(objId, primitiveCount, gl_PrimitiveID);
+  ivec3 ind = getTriangleIndices(indexOffset, gl_PrimitiveID);
 
   // Vertex of the triangle
-  Vertex v0 = getTriangleVertex(objId, indexCount, ind.x);
-  Vertex v1 = getTriangleVertex(objId, indexCount, ind.y);
-  Vertex v2 = getTriangleVertex(objId, indexCount, ind.z);
+  Vertex v0 = getTriangleVertex(vertexOffset, ind.x);
+  Vertex v1 = getTriangleVertex(vertexOffset, ind.y);
+  Vertex v2 = getTriangleVertex(vertexOffset, ind.z);
 
 
 // // float test = float(gl_InstanceID) + 0.5;
@@ -81,12 +77,19 @@ void main() {
   // hitValue = vec3(t, 0.0, 0.0);
   // hitValue = vec3(test);
   // hitValue = vec3(float(ind.x) / 4., float(ind.y) / 4., float(ind.z) / 4.);
-  // hitValue = vec3(float(ind.x) / 4., 0., 0.);
+
+
+
+  // hitValue  =vec3(float(gl_PrimitiveID));
+  // hitValue = vec3(float(ind.z) / 4., 0., 0.);
+  // hitValue = vec3(float(indices.i[6]) / 4., 0., 0.);
+  // hitValue = vec3(float(gl_InstanceID) / 3., 0., 0.);
   // hitValue = vec3(0., float(ind.y) / 4., 0.);
   // hitValue = vec3(0., 0., float(ind.z) / 5.);
   // hitValue = vec3(v0.pos);
-  // hitValue = vec3(v0.pos.y, 0.0,0.0);
+  // hitValue = vec3(vertexOffset / 36, 0.0,0.0);
   hitValue = vec3(v0.texCoord.x, 0.0,0.0);
+  // hitValue  =vec3(float(gl_InstanceID));
   // hitValue = vec3(0.0,0.0,v0.pos.z);
   // hitValue = vec3(0.5);
 }

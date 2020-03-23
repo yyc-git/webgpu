@@ -1,9 +1,8 @@
 struct InstanceData
 {
-  //TODO some field(e.g. objId) should be int, but treat as float because can't upload DataView!!!
-  float objId;
-  float primitiveCount;
-  float indexCount;
+  //TODO some field(e.g. vertexOffset) should be int, but treat as float because can't upload DataView!!!
+  float vertexOffset;
+  float indexOffset;
 };
 
 struct Vertex

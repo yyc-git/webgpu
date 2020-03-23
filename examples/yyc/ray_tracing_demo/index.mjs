@@ -3,6 +3,7 @@ import { loadShaderFile } from "./inliner.mjs";
 import R from "ramda";
 import * as WebGPUUtils from "./webgpuUtils.mjs";
 import * as Scene from "./scene.mjs";
+import * as TypeArrayUtils from "./typearrayUtils.mjs";
 import * as ManageAccelartionContainer from "./manageAccelerationContainer.mjs";
 import glMatrix from "gl-matrix";
 import { createShaderBindingTable } from "./manageShaderBindingTable.mjs";
@@ -14,7 +15,7 @@ Object.assign(global, glMatrix);
 function buildSceneDescBuffer(device) {
   let instanceCount = Scene.getSceneInstanCount();
 
-  let sceneDescDataCount = 3;
+  let sceneDescDataCount = 2;
   let sceneDescBufferSize = instanceCount * sceneDescDataCount * Float32Array.BYTES_PER_ELEMENT;
   let sceneDescBuffer = device.createBuffer({
     size: sceneDescBufferSize,
@@ -22,19 +23,16 @@ function buildSceneDescBuffer(device) {
   });
 
 
-  let sceneDescData = new Float32Array(
-    sceneDescBufferSize / Float32Array.BYTES_PER_ELEMENT
-  );
-
-  sceneDescData =
+  let sceneDescData =
     Scene.getSceneInstanceData()
-      .reduce((sceneDescData, [objId, primitiveCount, indexCount], i) => {
-        sceneDescData[i * sceneDescDataCount + 0] = objId;
-        sceneDescData[i * sceneDescDataCount + 1] = primitiveCount;
-        sceneDescData[i * sceneDescDataCount + 2] = indexCount;
+      .reduce((sceneDescData, [vertexOffset, indexOffset], i) => {
+        sceneDescData[i * sceneDescDataCount + 0] = vertexOffset;
+        sceneDescData[i * sceneDescDataCount + 1] = indexOffset;
 
         return sceneDescData;
-      }, sceneDescData);
+      }, TypeArrayUtils.newFloat32Array(
+        sceneDescBufferSize / Float32Array.BYTES_PER_ELEMENT
+      ));
 
 
   console.log("sceneDescData:", sceneDescData)
@@ -57,21 +55,20 @@ function buildIndexBuffer(device) {
 
 
 
-
-  let indexData = new Uint32Array(
-    indexBufferSize / Uint32Array.BYTES_PER_ELEMENT
-  );
-
-  indexData =
+  let indexData =
     Scene.getSceneIndexData()
       .reduce((indexData, indices, i) => {
         indexData.set(indices, i * indexDataCount)
 
         return indexData;
-      }, indexData);
+      },
+        TypeArrayUtils.newUint32Array(
+          indexBufferSize / Uint32Array.BYTES_PER_ELEMENT
+        ));
 
 
-  console.log(indexData)
+
+  console.log("indexData:", indexData);
 
   WebGPUUtils.setSubData(0, indexData, indexBuffer);
 
@@ -80,38 +77,39 @@ function buildIndexBuffer(device) {
 
 
 function buildVertexBuffer(device) {
-  let instanceCount = Scene.getSceneInstanCount();
-
-  let vertexDataCount = 3 * (4 + 4 + 4);
-  let vertexBufferSize = instanceCount * vertexDataCount * Float32Array.BYTES_PER_ELEMENT;
+  let vertexBufferLength = Scene.computeSceneVertexBufferDataLength();
+  let vertexBufferSize = vertexBufferLength * Float32Array.BYTES_PER_ELEMENT;
   let vertexBuffer = device.createBuffer({
     size: vertexBufferSize,
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
   });
 
 
-
-
-  let vertexData = new Float32Array(
-    vertexBufferSize / Float32Array.BYTES_PER_ELEMENT
-  );
-
-  vertexData =
+  let [vertexData, _] =
     Scene.getSceneVertexData()
-      .reduce((vertexData, [vertices, normals, texCoords], i) => {
-        var [vertexData, _] = R.range(0, 3).reduce(([vertexData, offset], index) => {
-          vertexData.set(vertices.slice(index * 4, (index + 1) * 4), offset);
-          vertexData.set(normals.slice(index * 4, (index + 1) * 4), offset + 4);
-          vertexData.set(texCoords.slice(index * 4, (index + 1) * 4), offset + 4 * 2);
+      .reduce(([vertexData, offset], [vertices, normals, texCoords]) => {
+        let vertexCount = vertices.length / 3;
+        let [newVertexData, newOffset] = R.range(0, vertexCount).reduce(([vertexData, offset], index) => {
+          vertexData.set(vertices.slice(index * 3, (index + 1) * 3), offset);
+          vertexData.set(normals.slice(index * 3, (index + 1) * 3), offset + 4);
+          vertexData.set(texCoords.slice(index * 2, (index + 1) * 2), offset + 4 * 2);
 
           return [vertexData, offset + 4 * 3];
-        }, [vertexData, i * vertexDataCount]);
+        }, [vertexData, offset]);
 
-        return vertexData;
-      }, vertexData);
+        return [newVertexData, newOffset];
+      },
+        [
+          TypeArrayUtils.newFloat32Array(
+            vertexBufferLength
+          ),
+          0
+        ]);
 
 
-  console.log(vertexData)
+
+
+  console.log("vertexData:", vertexData);
 
   WebGPUUtils.setSubData(0, vertexData, vertexBuffer);
 

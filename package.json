@@ -18,6 +18,7 @@
     "tests": "node --experimental-modules examples/yyc/ray_tracing_demo/index.mjs"
   },
   "devDependencies": {
+    "eslint": "^6.8.0",
     "ncp": "^2.0.0",
     "node-addon-api": "^1.7.1",
     "nunjucks": "^3.2.0"
