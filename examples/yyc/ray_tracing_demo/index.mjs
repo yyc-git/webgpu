@@ -1,4 +1,6 @@
-import WebGPU from "../../index.js";
+import WebGPU from "../../../index.js";
+import { range } from "./arrayUtils.mjs";
+import { loadShaderFile } from "./inliner.mjs";
 
 import fs from "fs";
 import glMatrix from "gl-matrix";
@@ -6,8 +8,209 @@ import glMatrix from "gl-matrix";
 Object.assign(global, WebGPU);
 Object.assign(global, glMatrix);
 
-(async function main() {
 
+// function buildTriangleGeometryData() {
+//   let vertices = new Float32Array([
+//     0.0, 1.0, 0.0,
+//     -1.0, -1.0, 0.0,
+//     1.0, -1.0, 0.0
+//   ]);
+//   let normals = new Float32Array([
+//     0.0, 0.0, 1.0,
+//     0.0, 0.0, 1.0,
+//     0.0, 0.0, 1.0
+//   ]);
+//   let texCoords = new Float32Array([
+//     0.5, 1.0,
+//     0.0, 0.0,
+//     1.0, 0.0
+//   ]);
+//   let indices = new Uint32Array([
+//     0, 1, 2
+//   ]);
+
+//   return [
+//     vertices, normals, texCoords, indices
+//   ]
+// }
+
+
+function buildTriangleVertexData() {
+  let vertices = new Float32Array([
+    0.0, 1.0, 0.0, 1.0,
+    -1.0, -1.0, 0.0, 1.0,
+    1.0, -1.0, 0.0, 1.0
+  ]);
+  let normals = new Float32Array([
+    0.0, 0.0, 1.0, 1.0,
+    0.0, 0.0, 1.0, 1.0,
+    0.0, 0.0, 1.0, 1.0
+  ]);
+  let texCoords = new Float32Array([
+    0.5, 1.0, 1.0, 1.0,
+    0.0, 0.0, 1.0, 1.0,
+    1.0, 0.0, 1.0, 1.0
+  ]);
+
+
+  return [
+    vertices, normals, texCoords
+  ]
+}
+
+function buildTriangleIndexData() {
+  let indices = new Uint32Array([
+    0, 1, 2
+  ]);
+
+  return indices;
+}
+
+function getSceneVertexData() {
+  return [
+    buildTriangleVertexData(),
+    buildTriangleVertexData()
+  ]
+};
+
+
+function getSceneIndexData() {
+  return [
+    buildTriangleIndexData(),
+    buildTriangleIndexData()
+  ]
+};
+
+function getTrianglePrimtiveCount() {
+  return 1;
+}
+
+function getTriangleIndexCount() {
+  return 3;
+}
+
+function getSceneInstanceData() {
+  return [
+    [0, getTrianglePrimtiveCount(), getTriangleIndexCount()],
+    [1, getTrianglePrimtiveCount(), getTriangleIndexCount()]
+  ]
+};
+
+function getSceneInstanCount() {
+  return 2;
+}
+
+function buildSceneDescBuffer(device) {
+  let instanceCount = getSceneInstanCount();
+
+  let sceneDescDataCount = 3;
+  let sceneDescBufferSize = instanceCount * sceneDescDataCount * Float32Array.BYTES_PER_ELEMENT;
+  let sceneDescBuffer = device.createBuffer({
+    size: sceneDescBufferSize,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
+  });
+
+
+  let sceneDescData = new Float32Array(
+    sceneDescBufferSize / Float32Array.BYTES_PER_ELEMENT
+  );
+
+  sceneDescData =
+    getSceneInstanceData()
+      .reduce((sceneDescData, [objId, primitiveCount, indexCount], i) => {
+        sceneDescData[i * sceneDescDataCount + 0] = objId;
+        sceneDescData[i * sceneDescDataCount + 1] = primitiveCount;
+        sceneDescData[i * sceneDescDataCount + 2] = indexCount;
+
+        return sceneDescData;
+      }, sceneDescData);
+
+
+  console.log("sceneDescData:", sceneDescData)
+
+  sceneDescBuffer.setSubData(0, sceneDescData);
+
+  return [sceneDescBufferSize, sceneDescBuffer];
+}
+
+
+function buildIndexBuffer(device) {
+  let instanceCount = getSceneInstanCount();
+
+  let indexDataCount = 3;
+  let indexBufferSize = instanceCount * indexDataCount * Uint32Array.BYTES_PER_ELEMENT;
+  let indexBuffer = device.createBuffer({
+    size: indexBufferSize,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
+  });
+
+
+
+
+  let indexData = new Uint32Array(
+    indexBufferSize / Uint32Array.BYTES_PER_ELEMENT
+  );
+
+  indexData =
+    getSceneIndexData()
+      .reduce((indexData, indices, i) => {
+        indexData.set(indices, i * indexDataCount)
+
+        return indexData;
+      }, indexData);
+
+
+  console.log(indexData)
+
+  indexBuffer.setSubData(0, indexData);
+
+  return [indexBufferSize, indexBuffer];
+}
+
+
+function buildVertexBuffer(device) {
+  let instanceCount = getSceneInstanCount();
+
+  let vertexDataCount = 3 * (4 + 4 + 4);
+  let vertexBufferSize = instanceCount * vertexDataCount * Float32Array.BYTES_PER_ELEMENT;
+  let vertexBuffer = device.createBuffer({
+    size: vertexBufferSize,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
+  });
+
+
+
+
+  let vertexData = new Float32Array(
+    vertexBufferSize / Float32Array.BYTES_PER_ELEMENT
+  );
+
+  vertexData =
+    getSceneVertexData()
+      .reduce((vertexData, [vertices, normals, texCoords], i) => {
+        var [vertexData, _] = range(0, 2).reduce(([vertexData, offset], index) => {
+          vertexData.set(vertices.subarray(index * 4, (index + 1) * 4), offset);
+          vertexData.set(normals.subarray(index * 4, (index + 1) * 4), offset + 4);
+          vertexData.set(texCoords.subarray(index * 4, (index + 1) * 4), offset + 4 * 2);
+
+          return [vertexData, offset + 4 * 3];
+        }, [vertexData, i * vertexDataCount]);
+
+        return vertexData;
+      }, vertexData);
+
+
+  console.log(vertexData)
+
+  vertexBuffer.setSubData(0, vertexData);
+
+  return [vertexBufferSize, vertexBuffer];
+}
+
+
+
+
+(async function main() {
   let window = new WebGPUWindow({
     width: 640,
     height: 480,
@@ -38,35 +241,46 @@ Object.assign(global, glMatrix);
   let mView = mat4.create();
   let mProjection = mat4.create();
 
-  mat4.perspective(mProjection, (2 * Math.PI) / 5, -aspect, 0.1, 4096.0);
+  // mat4.perspective(mProjection, (2 * Math.PI) / 5, -aspect, 0.1, 4096.0);
+  mat4.perspective(mProjection, (2 * Math.PI) / 5, aspect, 0.1, 4096.0);
 
-  mat4.translate(mView, mView, vec3.fromValues(0, 0, -2));
+  // mat4.translate(mView, mView, vec3.fromValues(0, 0, -2));
+
+  // mat4.lookAt(mView, vec3.fromValues(0, 2, 2), vec3.fromValues(0, 2, 0), vec3.fromValues(0, 1, 0));
+  mat4.lookAt(mView, vec3.fromValues(0, 0, 2), vec3.fromValues(0, 0, 0), vec3.fromValues(0, 1, 0));
 
   // invert
   mat4.invert(mView, mView);
   mat4.invert(mProjection, mProjection);
-  mProjection[5] *= -1.0;
+  // mProjection[5] *= -1.0;
 
-  let baseShaderPath = `examples/ray-tracing/shaders`;
+  let baseShaderPath = `examples/yyc/ray_tracing_demo/shaders`;
+
+
 
   // rasterization shaders
   let vertexShaderModule = device.createShaderModule({
-    code: fs.readFileSync(`${baseShaderPath}/screen.vert`, "utf-8")
+    code: loadShaderFile(`${baseShaderPath}/screen.vert`)
   });
   let fragmentShaderModule = device.createShaderModule({
-    code: fs.readFileSync(`${baseShaderPath}/screen.frag`, "utf-8")
+    code: loadShaderFile(`${baseShaderPath}/screen.frag`)
   });
 
   // ray-tracing shaders
   let rayGenShaderModule = device.createShaderModule({
-    code: fs.readFileSync(`${baseShaderPath}/ray-generation.rgen`, "utf-8")
+    code: loadShaderFile(`${baseShaderPath}/ray-generation.rgen`)
   });
   let rayCHitShaderModule = device.createShaderModule({
-    code: fs.readFileSync(`${baseShaderPath}/ray-closest-hit.rchit`, "utf-8")
+    code: loadShaderFile(`${baseShaderPath}/ray-closest-hit.rchit`)
   });
   let rayMissShaderModule = device.createShaderModule({
-    code: fs.readFileSync(`${baseShaderPath}/ray-miss.rmiss`, "utf-8")
+    code: loadShaderFile(`${baseShaderPath}/ray-miss.rmiss`)
   });
+
+
+
+
+
 
   // this storage buffer is used as a pixel buffer
   // the result of the ray tracing pass gets written into it
@@ -77,11 +291,19 @@ Object.assign(global, glMatrix);
     usage: GPUBufferUsage.STORAGE
   });
 
+  // let triangleVertices = new Float32Array([
+  //    1.0,  1.0, 0.0,
+  //   -1.0,  1.0, 0.0,
+  //    0.0, -1.0, 0.0
+  // ]);
+
+
   let triangleVertices = new Float32Array([
-     1.0,  1.0, 0.0,
-    -1.0,  1.0, 0.0,
-     0.0, -1.0, 0.0
+    0.0, 1.0, 0.0,
+    -1.0, -1.0, 0.0,
+    1.0, -1.0, 0.0
   ]);
+
   let triangleVertexBuffer = device.createBuffer({
     size: triangleVertices.byteLength,
     usage: GPUBufferUsage.COPY_DST
@@ -150,12 +372,14 @@ Object.assign(global, glMatrix);
     let commandEncoder = device.createCommandEncoder({});
     commandEncoder.buildRayTracingAccelerationContainer(geometryContainer);
     commandEncoder.buildRayTracingAccelerationContainer(instanceContainer);
-    queue.submit([ commandEncoder.finish() ]);
+    queue.submit([commandEncoder.finish()]);
   }
 
-  // a collection of shader modules which get dynamically
+  let shaderBindingTable;
+
+  // collection of shader modules which get dynamically
   // invoked, for example when calling traceNV
-  let shaderBindingTable = device.createRayTracingShaderBindingTable({
+  shaderBindingTable = device.createRayTracingShaderBindingTable({
     // stages are a collection of shaders
     // which get indexed in groups
     stages: [
@@ -205,7 +429,8 @@ Object.assign(global, glMatrix);
     ]
   });
 
-  let rtBindGroupLayout = device.createBindGroupLayout({
+
+  let rtGenBindGroupLayout = device.createBindGroupLayout({
     bindings: [
       {
         binding: 0,
@@ -224,6 +449,27 @@ Object.assign(global, glMatrix);
       }
     ]
   });
+
+  let rtCHitBindGroupLayout = device.createBindGroupLayout({
+    bindings: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.RAY_CLOSEST_HIT,
+        type: "readonly-storage-buffer"
+      },
+      {
+        binding: 1,
+        visibility: GPUShaderStage.RAY_CLOSEST_HIT,
+        type: "readonly-storage-buffer"
+      },
+      {
+        binding: 2,
+        visibility: GPUShaderStage.RAY_CLOSEST_HIT,
+        type: "readonly-storage-buffer"
+      }
+    ]
+  });
+
 
   let cameraData = new Float32Array(
     // (mat4) view
@@ -245,8 +491,8 @@ Object.assign(global, glMatrix);
   }
   cameraUniformBuffer.setSubData(0, cameraData);
 
-  let rtBindGroup = device.createBindGroup({
-    layout: rtBindGroupLayout,
+  let rtGenBindGroup = device.createBindGroup({
+    layout: rtGenBindGroupLayout,
     bindings: [
       {
         binding: 0,
@@ -269,9 +515,41 @@ Object.assign(global, glMatrix);
     ]
   });
 
+
+
+
+  let [sceneDescBufferSize, sceneDescBuffer] = buildSceneDescBuffer(device);
+  let [indexBufferSize, indexBuffer] = buildIndexBuffer(device);
+  let [vertexBufferSize, vertexBuffer] = buildVertexBuffer(device);
+
+
+  let rtCHitBindGroup = device.createBindGroup({
+    layout: rtCHitBindGroupLayout,
+    bindings: [
+      {
+        binding: 0,
+        buffer: sceneDescBuffer,
+        offset: 0,
+        size: sceneDescBufferSize
+      },
+      {
+        binding: 1,
+        buffer: vertexBuffer,
+        offset: 0,
+        size: vertexBufferSize
+      },
+      {
+        binding: 2,
+        buffer: indexBuffer,
+        offset: 0,
+        size: indexBufferSize
+      }
+    ]
+  });
+
   let rtPipeline = device.createRayTracingPipeline({
     layout: device.createPipelineLayout({
-      bindGroupLayouts: [rtBindGroupLayout]
+      bindGroupLayouts: [rtGenBindGroupLayout, rtCHitBindGroupLayout]
     }),
     rayTracingState: {
       shaderBindingTable,
@@ -360,7 +638,8 @@ Object.assign(global, glMatrix);
       let commandEncoder = device.createCommandEncoder({});
       let passEncoder = commandEncoder.beginRayTracingPass({});
       passEncoder.setPipeline(rtPipeline);
-      passEncoder.setBindGroup(0, rtBindGroup);
+      passEncoder.setBindGroup(0, rtGenBindGroup);
+      passEncoder.setBindGroup(1, rtCHitBindGroup);
       passEncoder.traceRays(
         0, // sbt ray-generation offset
         1, // sbt ray-hit offset
@@ -370,7 +649,7 @@ Object.assign(global, glMatrix);
         1              // query depth dimension
       );
       passEncoder.endPass();
-      queue.submit([ commandEncoder.finish() ]);
+      queue.submit([commandEncoder.finish()]);
 
     }
     // rasterization pass
@@ -391,7 +670,7 @@ Object.assign(global, glMatrix);
       passEncoder.setBindGroup(0, renderBindGroup);
       passEncoder.draw(3, 1, 0, 0);
       passEncoder.endPass();
-      queue.submit([ commandEncoder.finish() ]);
+      queue.submit([commandEncoder.finish()]);
     }
 
     swapChain.present();
