@@ -15,7 +15,7 @@
     "build": "node ./build.js",
     "generate": "node --experimental-modules --experimental-json-modules ./generator/index.mjs",
     "all": "npm run generate && npm run build",
-    "tests": "node --experimental-modules tests/index.mjs"
+    "tests": "node --experimental-modules examples/yyc/ray_tracing_demo/index.mjs"
   },
   "devDependencies": {
     "ncp": "^2.0.0",
@@ -23,7 +23,8 @@
     "nunjucks": "^3.2.0"
   },
   "dependencies": {
-    "gl-matrix": "^3.2.1"
+    "gl-matrix": "^3.2.1",
+    "ramda": "^0.27.0"
   },
   "description": "WebGPU for Node [WIP]",
   "repository": {

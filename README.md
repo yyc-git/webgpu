@@ -82,7 +82,7 @@ ninja -C out/Shared
 ## Examples
 ````
 cd examples & cd ..
-node --experimental-modules examples/interactive-triangle.mjs
+node --experimental-modules examples/yyc/ray_tracing_demo/index.mjs
 ````
 
 ## TODOs

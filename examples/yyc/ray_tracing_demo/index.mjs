@@ -1,107 +1,18 @@
 import WebGPU from "../../../index.js";
-import { range } from "./arrayUtils.mjs";
 import { loadShaderFile } from "./inliner.mjs";
-
-import fs from "fs";
+import R from "ramda";
+import * as WebGPUUtils from "./webgpuUtils.mjs";
+import * as Scene from "./scene.mjs";
+import * as ManageAccelartionContainer from "./manageAccelerationContainer.mjs";
 import glMatrix from "gl-matrix";
+import { createShaderBindingTable } from "./manageShaderBindingTable.mjs";
 
 Object.assign(global, WebGPU);
 Object.assign(global, glMatrix);
 
 
-// function buildTriangleGeometryData() {
-//   let vertices = new Float32Array([
-//     0.0, 1.0, 0.0,
-//     -1.0, -1.0, 0.0,
-//     1.0, -1.0, 0.0
-//   ]);
-//   let normals = new Float32Array([
-//     0.0, 0.0, 1.0,
-//     0.0, 0.0, 1.0,
-//     0.0, 0.0, 1.0
-//   ]);
-//   let texCoords = new Float32Array([
-//     0.5, 1.0,
-//     0.0, 0.0,
-//     1.0, 0.0
-//   ]);
-//   let indices = new Uint32Array([
-//     0, 1, 2
-//   ]);
-
-//   return [
-//     vertices, normals, texCoords, indices
-//   ]
-// }
-
-
-function buildTriangleVertexData() {
-  let vertices = new Float32Array([
-    0.0, 1.0, 0.0, 1.0,
-    -1.0, -1.0, 0.0, 1.0,
-    1.0, -1.0, 0.0, 1.0
-  ]);
-  let normals = new Float32Array([
-    0.0, 0.0, 1.0, 1.0,
-    0.0, 0.0, 1.0, 1.0,
-    0.0, 0.0, 1.0, 1.0
-  ]);
-  let texCoords = new Float32Array([
-    0.5, 1.0, 1.0, 1.0,
-    0.0, 0.0, 1.0, 1.0,
-    1.0, 0.0, 1.0, 1.0
-  ]);
-
-
-  return [
-    vertices, normals, texCoords
-  ]
-}
-
-function buildTriangleIndexData() {
-  let indices = new Uint32Array([
-    0, 1, 2
-  ]);
-
-  return indices;
-}
-
-function getSceneVertexData() {
-  return [
-    buildTriangleVertexData(),
-    buildTriangleVertexData()
-  ]
-};
-
-
-function getSceneIndexData() {
-  return [
-    buildTriangleIndexData(),
-    buildTriangleIndexData()
-  ]
-};
-
-function getTrianglePrimtiveCount() {
-  return 1;
-}
-
-function getTriangleIndexCount() {
-  return 3;
-}
-
-function getSceneInstanceData() {
-  return [
-    [0, getTrianglePrimtiveCount(), getTriangleIndexCount()],
-    [1, getTrianglePrimtiveCount(), getTriangleIndexCount()]
-  ]
-};
-
-function getSceneInstanCount() {
-  return 2;
-}
-
 function buildSceneDescBuffer(device) {
-  let instanceCount = getSceneInstanCount();
+  let instanceCount = Scene.getSceneInstanCount();
 
   let sceneDescDataCount = 3;
   let sceneDescBufferSize = instanceCount * sceneDescDataCount * Float32Array.BYTES_PER_ELEMENT;
@@ -116,7 +27,7 @@ function buildSceneDescBuffer(device) {
   );
 
   sceneDescData =
-    getSceneInstanceData()
+    Scene.getSceneInstanceData()
       .reduce((sceneDescData, [objId, primitiveCount, indexCount], i) => {
         sceneDescData[i * sceneDescDataCount + 0] = objId;
         sceneDescData[i * sceneDescDataCount + 1] = primitiveCount;
@@ -128,14 +39,14 @@ function buildSceneDescBuffer(device) {
 
   console.log("sceneDescData:", sceneDescData)
 
-  sceneDescBuffer.setSubData(0, sceneDescData);
+  WebGPUUtils.setSubData(0, sceneDescData, sceneDescBuffer);
 
   return [sceneDescBufferSize, sceneDescBuffer];
 }
 
 
 function buildIndexBuffer(device) {
-  let instanceCount = getSceneInstanCount();
+  let instanceCount = Scene.getSceneInstanCount();
 
   let indexDataCount = 3;
   let indexBufferSize = instanceCount * indexDataCount * Uint32Array.BYTES_PER_ELEMENT;
@@ -152,7 +63,7 @@ function buildIndexBuffer(device) {
   );
 
   indexData =
-    getSceneIndexData()
+    Scene.getSceneIndexData()
       .reduce((indexData, indices, i) => {
         indexData.set(indices, i * indexDataCount)
 
@@ -162,14 +73,14 @@ function buildIndexBuffer(device) {
 
   console.log(indexData)
 
-  indexBuffer.setSubData(0, indexData);
+  WebGPUUtils.setSubData(0, indexData, indexBuffer);
 
   return [indexBufferSize, indexBuffer];
 }
 
 
 function buildVertexBuffer(device) {
-  let instanceCount = getSceneInstanCount();
+  let instanceCount = Scene.getSceneInstanCount();
 
   let vertexDataCount = 3 * (4 + 4 + 4);
   let vertexBufferSize = instanceCount * vertexDataCount * Float32Array.BYTES_PER_ELEMENT;
@@ -186,12 +97,12 @@ function buildVertexBuffer(device) {
   );
 
   vertexData =
-    getSceneVertexData()
+    Scene.getSceneVertexData()
       .reduce((vertexData, [vertices, normals, texCoords], i) => {
-        var [vertexData, _] = range(0, 2).reduce(([vertexData, offset], index) => {
-          vertexData.set(vertices.subarray(index * 4, (index + 1) * 4), offset);
-          vertexData.set(normals.subarray(index * 4, (index + 1) * 4), offset + 4);
-          vertexData.set(texCoords.subarray(index * 4, (index + 1) * 4), offset + 4 * 2);
+        var [vertexData, _] = R.range(0, 3).reduce(([vertexData, offset], index) => {
+          vertexData.set(vertices.slice(index * 4, (index + 1) * 4), offset);
+          vertexData.set(normals.slice(index * 4, (index + 1) * 4), offset + 4);
+          vertexData.set(texCoords.slice(index * 4, (index + 1) * 4), offset + 4 * 2);
 
           return [vertexData, offset + 4 * 3];
         }, [vertexData, i * vertexDataCount]);
@@ -202,7 +113,7 @@ function buildVertexBuffer(device) {
 
   console.log(vertexData)
 
-  vertexBuffer.setSubData(0, vertexData);
+  WebGPUUtils.setSubData(0, vertexData, vertexBuffer);
 
   return [vertexBufferSize, vertexBuffer];
 }
@@ -247,7 +158,7 @@ function buildVertexBuffer(device) {
   // mat4.translate(mView, mView, vec3.fromValues(0, 0, -2));
 
   // mat4.lookAt(mView, vec3.fromValues(0, 2, 2), vec3.fromValues(0, 2, 0), vec3.fromValues(0, 1, 0));
-  mat4.lookAt(mView, vec3.fromValues(0, 0, 2), vec3.fromValues(0, 0, 0), vec3.fromValues(0, 1, 0));
+  mat4.lookAt(mView, vec3.fromValues(0, 0, 10), vec3.fromValues(0, 0, 0), vec3.fromValues(0, 1, 0));
 
   // invert
   mat4.invert(mView, mView);
@@ -255,7 +166,6 @@ function buildVertexBuffer(device) {
   // mProjection[5] *= -1.0;
 
   let baseShaderPath = `examples/yyc/ray_tracing_demo/shaders`;
-
 
 
   // rasterization shaders
@@ -266,19 +176,7 @@ function buildVertexBuffer(device) {
     code: loadShaderFile(`${baseShaderPath}/screen.frag`)
   });
 
-  // ray-tracing shaders
-  let rayGenShaderModule = device.createShaderModule({
-    code: loadShaderFile(`${baseShaderPath}/ray-generation.rgen`)
-  });
-  let rayCHitShaderModule = device.createShaderModule({
-    code: loadShaderFile(`${baseShaderPath}/ray-closest-hit.rchit`)
-  });
-  let rayMissShaderModule = device.createShaderModule({
-    code: loadShaderFile(`${baseShaderPath}/ray-miss.rmiss`)
-  });
-
-
-
+  let shaderBindingTable = createShaderBindingTable(baseShaderPath, device);
 
 
 
@@ -291,143 +189,12 @@ function buildVertexBuffer(device) {
     usage: GPUBufferUsage.STORAGE
   });
 
-  // let triangleVertices = new Float32Array([
-  //    1.0,  1.0, 0.0,
-  //   -1.0,  1.0, 0.0,
-  //    0.0, -1.0, 0.0
-  // ]);
 
 
-  let triangleVertices = new Float32Array([
-    0.0, 1.0, 0.0,
-    -1.0, -1.0, 0.0,
-    1.0, -1.0, 0.0
-  ]);
 
-  let triangleVertexBuffer = device.createBuffer({
-    size: triangleVertices.byteLength,
-    usage: GPUBufferUsage.COPY_DST
-  });
-  triangleVertexBuffer.setSubData(0, triangleVertices);
 
-  let triangleIndices = new Uint32Array([
-    0, 1, 2
-  ]);
-  let triangleIndexBuffer = device.createBuffer({
-    size: triangleIndices.byteLength,
-    usage: GPUBufferUsage.COPY_DST
-  });
-  triangleIndexBuffer.setSubData(0, triangleIndices);
+  let instanceContainer = ManageAccelartionContainer.buildContainers(device, queue);
 
-  // create a geometry container
-  // which holds references to our geometry buffers
-  let geometryContainer = device.createRayTracingAccelerationContainer({
-    level: "bottom",
-    flags: GPURayTracingAccelerationContainerFlag.PREFER_FAST_TRACE,
-    geometries: [
-      {
-        flags: GPURayTracingAccelerationGeometryFlag.OPAQUE,
-        type: "triangles",
-        vertex: {
-          buffer: triangleVertexBuffer,
-          format: "float3",
-          stride: 3 * Float32Array.BYTES_PER_ELEMENT,
-          count: triangleVertices.length
-        },
-        index: {
-          buffer: triangleIndexBuffer,
-          format: "uint32",
-          count: triangleIndices.length
-        }
-      }
-    ]
-  });
-
-  // create an instance container
-  // which contains object instances with transforms
-  // and links to a geometry container to be used
-  let instanceContainer = device.createRayTracingAccelerationContainer({
-    level: "top",
-    flags: GPURayTracingAccelerationContainerFlag.PREFER_FAST_TRACE,
-    instances: [
-      {
-        flags: GPURayTracingAccelerationInstanceFlag.TRIANGLE_CULL_DISABLE,
-        mask: 0xFF,
-        instanceId: 0,
-        instanceOffset: 0x0,
-        transform: {
-          translation: { x: 0, y: 0, z: 0 },
-          rotation: { x: 0, y: 0, z: 0 },
-          scale: { x: 1, y: 1, z: 1 }
-        },
-        geometryContainer: geometryContainer
-      }
-    ]
-  });
-
-  // build the containers (the order is important)
-  // geometry containers have to be built before
-  // an instance container, if it has a geometry reference into it
-  {
-    let commandEncoder = device.createCommandEncoder({});
-    commandEncoder.buildRayTracingAccelerationContainer(geometryContainer);
-    commandEncoder.buildRayTracingAccelerationContainer(instanceContainer);
-    queue.submit([commandEncoder.finish()]);
-  }
-
-  let shaderBindingTable;
-
-  // collection of shader modules which get dynamically
-  // invoked, for example when calling traceNV
-  shaderBindingTable = device.createRayTracingShaderBindingTable({
-    // stages are a collection of shaders
-    // which get indexed in groups
-    stages: [
-      {
-        module: rayGenShaderModule,
-        stage: GPUShaderStage.RAY_GENERATION
-      },
-      {
-        module: rayCHitShaderModule,
-        stage: GPUShaderStage.RAY_CLOSEST_HIT
-      },
-      {
-        module: rayMissShaderModule,
-        stage: GPUShaderStage.RAY_MISS
-      }
-    ],
-    // groups can index the shaders in stages
-    // generalIndex: ray generation or ray miss stage index
-    // anyHitIndex: ray any-hit stage index
-    // closestHitIndex: ray closest-hit stage index
-    // intersectionIndex: ray intersection stage index
-    groups: [
-      // generation group
-      {
-        type: "general",
-        generalIndex: 0, // ray generation shader index
-        anyHitIndex: -1,
-        closestHitIndex: -1,
-        intersectionIndex: -1
-      },
-      // hit group
-      {
-        type: "triangle-hit-group",
-        generalIndex: -1,
-        anyHitIndex: -1,
-        closestHitIndex: 1, // ray closest-hit shader index
-        intersectionIndex: -1
-      },
-      // miss group
-      {
-        type: "general",
-        generalIndex: 2, // ray miss shader index
-        anyHitIndex: -1,
-        closestHitIndex: -1,
-        intersectionIndex: -1
-      }
-    ]
-  });
 
 
   let rtGenBindGroupLayout = device.createBindGroupLayout({
