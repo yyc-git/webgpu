@@ -149,6 +149,41 @@ function buildVertexBuffer(device) {
 }
 
 
+function buildPhongMaterialBuffer(device) {
+  let phongMaterialBufferLength = Scene.computeScenePhongMaterialBufferDataLength();
+  let phongMaterialBufferSize = phongMaterialBufferLength * Float32Array.BYTES_PER_ELEMENT;
+  let phongMaterialBuffer = device.createBuffer({
+    size: phongMaterialBufferSize,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
+  });
+
+  let [phongMaterialData, _] =
+    Scene.getScenePhongMaterialData()
+      .reduce(([phongMaterialData, offset], [ambient, diffuse, specular, compressedData]) => {
+        phongMaterialData.set(ambient, offset);
+        phongMaterialData.set(diffuse, offset + 4);
+        phongMaterialData.set(specular, offset + 8);
+        phongMaterialData.set(compressedData, offset + 12);
+
+        return [phongMaterialData, offset + 16];
+      },
+        [
+          TypeArrayUtils.newFloat32Array(
+            phongMaterialBufferLength
+          ),
+          0
+        ]);
+
+
+
+  console.log("phongMaterialData:", phongMaterialData);
+
+  WebGPUUtils.setSubData(0, phongMaterialData, phongMaterialBuffer);
+
+  return [phongMaterialBufferSize, phongMaterialBuffer];
+}
+
+
 function buildDirectionLightUniformBuffer(device) {
   let directionLightData = TypeArrayUtils.newFloat32Array([
     1.0,
@@ -296,6 +331,11 @@ function buildDirectionLightUniformBuffer(device) {
       {
         binding: 4,
         visibility: GPUShaderStage.RAY_CLOSEST_HIT,
+        type: "readonly-storage-buffer"
+      },
+      {
+        binding: 5,
+        visibility: GPUShaderStage.RAY_CLOSEST_HIT,
         type: "uniform-buffer"
       }
     ]
@@ -353,6 +393,7 @@ function buildDirectionLightUniformBuffer(device) {
   let [sceneObjOffsetDataBufferSize, sceneObjOffsetDataBuffer] = buildSceneObjOffsetDataBuffer(device);
   let [indexBufferSize, indexBuffer] = buildIndexBuffer(device);
   let [vertexBufferSize, vertexBuffer] = buildVertexBuffer(device);
+  let [phongMaterialBufferSize, phongMaterialBuffer] = buildPhongMaterialBuffer(device);
   let [directionLightBufferSize, directionLightBuffer] = buildDirectionLightUniformBuffer(device);
 
 
@@ -385,6 +426,12 @@ function buildDirectionLightUniformBuffer(device) {
       },
       {
         binding: 4,
+        buffer: phongMaterialBuffer,
+        offset: 0,
+        size: phongMaterialBufferSize
+      },
+      {
+        binding: 5,
         buffer: directionLightBuffer,
         offset: 0,
         size: directionLightBufferSize

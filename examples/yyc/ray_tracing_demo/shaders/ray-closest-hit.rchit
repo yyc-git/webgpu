@@ -24,7 +24,12 @@ vertices;
 layout(scalar, set = 1, binding = 3) buffer Indices { uint i[]; }
 indices;
 
-layout(std140, set = 1, binding = 4) uniform DirectionLight {
+layout(std140, set = 1, binding = 4) buffer MatColorBufferObject {
+  PhongMaterial m[];
+}
+materials;
+
+layout(std140, set = 1, binding = 5) uniform DirectionLight {
   vec4 compressedData;
   vec4 position;
 }
@@ -32,7 +37,9 @@ uDirectionLight;
 
 hitAttributeNV vec3 attribs;
 
-InstanceData getInstanceData(int instanceIndex) { return sceneDesc.i[instanceIndex]; }
+InstanceData getInstanceData(int instanceIndex) {
+  return sceneDesc.i[instanceIndex];
+}
 
 vec4 getCompressedData(InstanceData instanceData) {
   return instanceData.compressedData;
@@ -59,6 +66,10 @@ mat3 getNormalMatrix(InstanceData instanceData) {
 mat4 getModelMatrix(InstanceData instanceData) {
   return instanceData.modelMatrix;
 }
+
+PhongMaterial getMaterial(uint objIndex) { return materials.m[objIndex]; }
+
+float getDirectionLightIntensity() { return uDirectionLight.compressedData.x; }
 
 ivec3 getTriangleIndices(uint indexOffset, uint primitiveIndex) {
   return ivec3(indices.i[indexOffset + 3 * primitiveIndex + 0],
@@ -108,14 +119,59 @@ void main() {
 
   // Vector toward the light
   vec3 lightDir;
-  // float lightIntensity = uDirectionLight.intensity;
+  float lightIntensity = getDirectionLightIntensity();
   // float lightDistance  = 100000.0;
 
   lightDir = normalize(vec3(uDirectionLight.position) - vec3(0.0));
 
-  float dotNL = max(dot(normal, lightDir), 0.2);
+  // float dotNL = max(dot(normal, lightDir), 0.2);
+  PhongMaterial mat = getMaterial(objIndex);
 
-  hitValue = vec3(dotNL);
+  // Diffuse
+  vec3 diffuse = computeDiffuse(mat, lightDir, normal);
+
+  vec3 specular = vec3(0.0);
+  float attenuation = 1.0;
+
+  // Tracing shadow ray only if the light is visible from the surface
+  if (dot(normal, lightDir) > 0) {
+    // float tMin   = 0.001;
+    // float tMax   = lightDistance;
+    // vec3  origin = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_HitTNV;
+    // vec3  rayDir = L;
+    // uint  flags =
+    //     gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsOpaqueNV |
+    //     gl_RayFlagsSkipClosestHitShaderNV;
+    // isShadowed = true;
+    // traceNV(topLevelAS,  // acceleration structure
+    //         flags,       // rayFlags
+    //         0xFF,        // cullMask
+    //         0,           // sbtRecordOffset
+    //         0,           // sbtRecordStride
+    //         1,           // missIndex
+    //         origin,      // ray origin
+    //         tMin,        // ray min range
+    //         rayDir,      // ray direction
+    //         tMax,        // ray max range
+    //         1            // payload (location = 1)
+    // );
+
+    // if(isShadowed)
+    // {
+    //   attenuation = 0.3;
+    // }
+    // else
+    // {
+    // Specular
+    specular = computeSpecular(mat, gl_WorldRayDirectionNV, lightDir, normal);
+    // }
+  }
+
+  hitValue = vec3(lightIntensity * attenuation * (diffuse + specular));
+
+
+
+  // hitValue = vec3(dotNL);
 
   // hitValue = vec3(float(indexCount) / 100.0, 0.0, 0.0);
   // hitValue = vec3(t, 0.0, 0.0);
