@@ -9,18 +9,22 @@
 
 layout(location = 0) rayPayloadInNV vec3 hitValue;
 
-// layout(scalar, set = 1, binding = 0) buffer SceneDesc { InstanceData i[]; }
-// sceneDesc;
 layout(std140, set = 1, binding = 0) buffer SceneDesc { InstanceData i[]; }
 sceneDesc;
+
+layout(std140, set = 1, binding = 1) buffer SceneObjOffsetData {
+  ObjOffsetData o[];
+}
+sceneObjOffsetData;
+
 // TODO use array of blocks!how to upload data???
 // TODO should use scalar, but it not work!!!use std 140 instead
-layout(scalar, set = 1, binding = 1) buffer Vertices { Vertex v[]; }
+layout(scalar, set = 1, binding = 2) buffer Vertices { Vertex v[]; }
 vertices;
-layout(scalar, set = 1, binding = 2) buffer Indices { uint i[]; }
+layout(scalar, set = 1, binding = 3) buffer Indices { uint i[]; }
 indices;
 
-layout(std140, set = 1, binding = 3) uniform DirectionLight {
+layout(std140, set = 1, binding = 4) uniform DirectionLight {
   vec4 compressedData;
   vec4 position;
 }
@@ -28,15 +32,25 @@ uDirectionLight;
 
 hitAttributeNV vec3 attribs;
 
-InstanceData getInstanceData(int instanceId) { return sceneDesc.i[instanceId]; }
+InstanceData getInstanceData(int instanceIndex) { return sceneDesc.i[instanceIndex]; }
 
 vec4 getCompressedData(InstanceData instanceData) {
   return instanceData.compressedData;
 }
 
-uint getVertexOffset(vec4 compressedData) { return uint(compressedData.x); }
+uint getObjIndex(vec4 compressedData) { return uint(compressedData.x); }
 
-uint getIndexOffset(vec4 compressedData) { return uint(compressedData.y); }
+ObjOffsetData getObjOffsetData(uint objIndex) {
+  return sceneObjOffsetData.o[objIndex];
+}
+
+uint getVertexOffset(ObjOffsetData objOffsetData) {
+  return objOffsetData.vertexOffset;
+}
+
+uint getIndexOffset(ObjOffsetData objOffsetData) {
+  return objOffsetData.indexOffset;
+}
 
 mat3 getNormalMatrix(InstanceData instanceData) {
   return instanceData.normalMatrix;
@@ -46,10 +60,10 @@ mat4 getModelMatrix(InstanceData instanceData) {
   return instanceData.modelMatrix;
 }
 
-ivec3 getTriangleIndices(uint indexOffset, uint primitiveId) {
-  return ivec3(indices.i[indexOffset + 3 * primitiveId + 0],
-               indices.i[indexOffset + 3 * primitiveId + 1],
-               indices.i[indexOffset + 3 * primitiveId + 2]);
+ivec3 getTriangleIndices(uint indexOffset, uint primitiveIndex) {
+  return ivec3(indices.i[indexOffset + 3 * primitiveIndex + 0],
+               indices.i[indexOffset + 3 * primitiveIndex + 1],
+               indices.i[indexOffset + 3 * primitiveIndex + 2]);
 }
 
 Vertex getTriangleVertex(uint vertexOffset, uint index) {
@@ -57,12 +71,13 @@ Vertex getTriangleVertex(uint vertexOffset, uint index) {
 }
 
 void main() {
-  // Object of this instance
   InstanceData instanceData = getInstanceData(gl_InstanceID);
 
   vec4 compressedData = getCompressedData(instanceData);
-  uint vertexOffset = getVertexOffset(compressedData);
-  uint indexOffset = getIndexOffset(compressedData);
+  uint objIndex = getObjIndex(compressedData);
+  ObjOffsetData objOffsetData = getObjOffsetData(objIndex);
+  uint vertexOffset = getVertexOffset(objOffsetData);
+  uint indexOffset = getIndexOffset(objOffsetData);
 
   // Indices of the triangle
   ivec3 ind = getTriangleIndices(indexOffset, gl_PrimitiveID);
@@ -90,7 +105,6 @@ void main() {
 
   // Transforming the position to world space
   vec3 worldPos = vec3(getModelMatrix(instanceData) * vec4(localPos, 1.0));
-
 
   // Vector toward the light
   vec3 lightDir;

@@ -15,11 +15,7 @@ Object.assign(global, glMatrix);
 function buildSceneDescBuffer(device) {
   let instanceCount = Scene.getSceneInstanCount();
 
-  // let sceneDescDataCount = 1 + 1 + 9 + 16;
-  // let sceneDescDataCount = 1 + 1 + 9;
-  // let sceneDescDataCount = 1 + 1 + 16;
-  // let sceneDescDataCount = 1 + 1 + 4;
-  let sceneDescDataCount = 4 + 4 + 12 + 16;
+  let sceneDescDataCount = 4 + 12 + 16;
   let sceneDescBufferSize = instanceCount * sceneDescDataCount * Float32Array.BYTES_PER_ELEMENT;
   let sceneDescBuffer = device.createBuffer({
     size: sceneDescBufferSize,
@@ -30,8 +26,8 @@ function buildSceneDescBuffer(device) {
 
   let [sceneDescData, _] =
     Scene.getSceneGameObjectData()
-      .reduce(([sceneDescData, offset], [compressedData, normalMatrix, modelMatrix], i) => {
-        sceneDescData.set(compressedData, offset);
+      .reduce(([sceneDescData, offset], [objIndex, normalMatrix, modelMatrix], i) => {
+        sceneDescData[offset] = objIndex;
 
         var [sceneDescData, offset] = BufferPaddingUtils.setMat3DataToBufferData(offset + 4, normalMatrix, sceneDescData);
 
@@ -47,6 +43,36 @@ function buildSceneDescBuffer(device) {
   WebGPUUtils.setSubData(0, sceneDescData, sceneDescBuffer);
 
   return [sceneDescBufferSize, sceneDescBuffer];
+}
+
+
+function buildSceneObjOffsetDataBuffer(device) {
+  let instanceCount = Scene.getSceneInstanCount();
+
+  let sceneObjOffsetDataCount = 2;
+  let sceneObjOffsetBufferSize = instanceCount * sceneObjOffsetDataCount * Uint32Array.BYTES_PER_ELEMENT;
+  let sceneObjOffsetBuffer = device.createBuffer({
+    size: sceneObjOffsetBufferSize,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
+  });
+
+
+  let [sceneObjOffsetData, _] =
+    Scene.getSceneObjData()
+      .reduce(([sceneObjOffsetData, offset], [vertexOffset, indexOffset], i) => {
+        sceneObjOffsetData[offset] = vertexOffset;
+        sceneObjOffsetData[offset + 1] = indexOffset;
+
+        return [sceneObjOffsetData, offset + 2];
+      }, [TypeArrayUtils.newUint32Array(
+        sceneObjOffsetBufferSize / Uint32Array.BYTES_PER_ELEMENT
+      ), 0]);
+
+  console.log("sceneObjOffsetData:", sceneObjOffsetData)
+
+  WebGPUUtils.setSubData(0, sceneObjOffsetData, sceneObjOffsetBuffer);
+
+  return [sceneObjOffsetBufferSize, sceneObjOffsetBuffer];
 }
 
 
@@ -265,6 +291,11 @@ function buildDirectionLightUniformBuffer(device) {
       {
         binding: 3,
         visibility: GPUShaderStage.RAY_CLOSEST_HIT,
+        type: "readonly-storage-buffer"
+      },
+      {
+        binding: 4,
+        visibility: GPUShaderStage.RAY_CLOSEST_HIT,
         type: "uniform-buffer"
       }
     ]
@@ -319,6 +350,7 @@ function buildDirectionLightUniformBuffer(device) {
 
 
   let [sceneDescBufferSize, sceneDescBuffer] = buildSceneDescBuffer(device);
+  let [sceneObjOffsetDataBufferSize, sceneObjOffsetDataBuffer] = buildSceneObjOffsetDataBuffer(device);
   let [indexBufferSize, indexBuffer] = buildIndexBuffer(device);
   let [vertexBufferSize, vertexBuffer] = buildVertexBuffer(device);
   let [directionLightBufferSize, directionLightBuffer] = buildDirectionLightUniformBuffer(device);
@@ -335,18 +367,24 @@ function buildDirectionLightUniformBuffer(device) {
       },
       {
         binding: 1,
+        buffer: sceneObjOffsetDataBuffer,
+        offset: 0,
+        size: sceneObjOffsetDataBufferSize
+      },
+      {
+        binding: 2,
         buffer: vertexBuffer,
         offset: 0,
         size: vertexBufferSize
       },
       {
-        binding: 2,
+        binding: 3,
         buffer: indexBuffer,
         offset: 0,
         size: indexBufferSize
       },
       {
-        binding: 3,
+        binding: 4,
         buffer: directionLightBuffer,
         offset: 0,
         size: directionLightBufferSize

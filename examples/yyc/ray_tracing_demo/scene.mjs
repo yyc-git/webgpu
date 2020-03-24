@@ -174,32 +174,22 @@ export let computeSceneVertexBufferDataLength = () => {
     )
 };
 
-
-let _computeGameObjectIndexOffset = (geometryIndex, sceneVertexData) => {
+let _computeGameObjectIndexOffset = (objIndex, sceneVertexData) => {
     return sceneVertexData
-        .slice(0, geometryIndex)
+        .slice(0, objIndex)
         .reduce((totalIndexCount, indices) => {
             return totalIndexCount + _computeIndexCount(indices);
         }, 0);
 }
 
 
-let _computeGameObjectVertexOffset = (geometryIndex, sceneVertexData) => {
+let _computeGameObjectVertexOffset = (objIndex, sceneVertexData) => {
     return sceneVertexData
-        .slice(0, geometryIndex)
+        .slice(0, objIndex)
         .reduce((offset, vertexData) => {
             return offset + _computeVertexDataCount(vertexData);
         }, 0);
 }
-
-let _computeGameObjectCompressedData = (geometryIndex, sceneVertexData) => {
-    return [
-        _computeGameObjectVertexOffset(geometryIndex, sceneVertexData),
-        _computeGameObjectIndexOffset(geometryIndex, sceneVertexData),
-        0.0,
-        0.0
-    ]
-};
 
 let _convertToVec3 = ({ x, y, z }) => [x, y, z];
 
@@ -228,17 +218,8 @@ let _buildNormalMatrix = (modelMatrix) => {
     )
 };
 
-// let _buildNormalMatrix = (modelMatrix) => {
-//     let outMat4 = glMatrix.mat4.create();
 
-//     return R.pipe(
-//         R.curry(glMatrix.mat4.invert)(outMat4),
-//         R.curry(glMatrix.mat4.transpose)(outMat4),
-//     )(modelMatrix);
-// };
-
-
-let _buildGameObjectData = (geometryIndex, gameObjectIndex, sceneVertexData, sceneTransformDataWithGeometryIndex) => {
+let _buildGameObjectData = (objIndex, gameObjectIndex, sceneTransformDataWithGeometryIndex) => {
     let modelMatrix = R.pipe(
         _getTransformData,
         _buildModelMatrix
@@ -247,46 +228,41 @@ let _buildGameObjectData = (geometryIndex, gameObjectIndex, sceneVertexData, sce
         sceneTransformDataWithGeometryIndex
     );
 
-    // console.log("gI:",  gameObjectIndex);
-    // console.log("comredd:", _computeGameObjectCompressedData(geometryIndex, sceneVertexData));
-    // console.log("normalMatrix:",  _buildNormalMatrix(modelMatrix));
-    // console.log("modelMatrix:", (modelMatrix));
-    
-
     return [
-        _computeGameObjectCompressedData(geometryIndex, sceneVertexData),
+        objIndex,
         _buildNormalMatrix(modelMatrix),
         modelMatrix
+    ]
+};
+
+export let getSceneGameObjectData = () => {
+    let sceneTransformDataWithGeometryIndex = getSceneTransformDataWithGeometryIndex();
+
+    return [
+        _buildGameObjectData(0, 0, sceneTransformDataWithGeometryIndex),
+        _buildGameObjectData(0, 1, sceneTransformDataWithGeometryIndex),
+        _buildGameObjectData(1, 2, sceneTransformDataWithGeometryIndex),
+    ];
+};
+
+
+let _buildObjData = (objIndex, sceneVertexData) => {
+    return [
+        _computeGameObjectVertexOffset(objIndex, sceneVertexData),
+        _computeGameObjectIndexOffset(objIndex, sceneVertexData),
     ]
 
 };
 
-export let getSceneGameObjectData = () => {
+
+export let getSceneObjData = () => {
     let sceneVertexData = getSceneVertexData();
-    let sceneTransformDataWithGeometryIndex = getSceneTransformDataWithGeometryIndex();
 
     return [
-        _buildGameObjectData(0, 0, sceneVertexData, sceneTransformDataWithGeometryIndex),
-        _buildGameObjectData(0, 1, sceneVertexData, sceneTransformDataWithGeometryIndex),
-        _buildGameObjectData(1, 2, sceneVertexData, sceneTransformDataWithGeometryIndex),
+        _buildObjData(0, sceneVertexData),
+        _buildObjData(0, sceneVertexData),
+        _buildObjData(1, sceneVertexData),
     ];
-    // return [
-    //     [
-    //         [0.0,0.0,1.0,0.0],
-    //         [0.0,0.0,1.0,0.0],
-    //         [0.5,0.1,0.5,1.0],
-    //     ],
-    //     [
-    //         [0.0,0.0,1.0,0.0],
-    //         [0.0,0.0,1.0,0.0],
-    //         [1.0,0.0,0.0,1.0],
-    //     ],
-    //     [
-    //         [0.0,0.0,1.0,0.0],
-    //         [0.0,0.0,1.0,0.0],
-    //         [0.0,0.0,1.0,1.0],
-    //     ],
-    // ]
 };
 
 export let getSceneInstanCount = () => {
