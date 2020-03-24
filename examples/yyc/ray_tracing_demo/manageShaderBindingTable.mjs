@@ -11,13 +11,16 @@ let _createRtShaderModule = (baseShaderPath, device) => {
     let rayMissShaderModule = device.createShaderModule({
         code: loadShaderFile(`${baseShaderPath}/ray-miss.rmiss`)
     });
+    let rayShadowMissShaderModule = device.createShaderModule({
+        code: loadShaderFile(`${baseShaderPath}/ray-shadow-miss.rmiss`)
+    });
 
-    return [rayGenShaderModule, rayCHitShaderModule, rayMissShaderModule];
+    return [rayGenShaderModule, rayCHitShaderModule, [rayMissShaderModule, rayShadowMissShaderModule]];
 };
 
 
 export let createShaderBindingTable = (baseShaderPath, device) => {
-    let [rayGenShaderModule, rayCHitShaderModule, rayMissShaderModule] = _createRtShaderModule(baseShaderPath, device);
+    let [rayGenShaderModule, rayCHitShaderModule, [rayMissShaderModule, rayShadowMissShaderModule]] = _createRtShaderModule(baseShaderPath, device);
 
     // collection of shader modules which get dynamically
     // invoked, for example when calling traceNV
@@ -35,6 +38,10 @@ export let createShaderBindingTable = (baseShaderPath, device) => {
             },
             {
                 module: rayMissShaderModule,
+                stage: GPUShaderStage.RAY_MISS
+            },
+            {
+                module: rayShadowMissShaderModule,
                 stage: GPUShaderStage.RAY_MISS
             }
         ],
@@ -64,6 +71,14 @@ export let createShaderBindingTable = (baseShaderPath, device) => {
             {
                 type: "general",
                 generalIndex: 2, // ray miss shader index
+                anyHitIndex: -1,
+                closestHitIndex: -1,
+                intersectionIndex: -1
+            },
+            // miss group
+            {
+                type: "general",
+                generalIndex: 3, // ray miss shader index
                 anyHitIndex: -1,
                 closestHitIndex: -1,
                 intersectionIndex: -1

@@ -185,17 +185,7 @@ function buildPhongMaterialBuffer(device) {
 
 
 function buildDirectionLightUniformBuffer(device) {
-  let directionLightData = TypeArrayUtils.newFloat32Array([
-    1.0,
-    0.0,
-    0.0,
-    0.0,
-
-    0.0,
-    0.0,
-    1.0,
-    0.0
-  ]);
+  let directionLightData = Scene.getSceneDirectionLightData();
   let directionLightUniformBuffer = device.createBuffer({
     size: directionLightData.byteLength,
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM
@@ -290,7 +280,7 @@ function buildDirectionLightUniformBuffer(device) {
     bindings: [
       {
         binding: 0,
-        visibility: GPUShaderStage.RAY_GENERATION,
+        visibility: GPUShaderStage.RAY_GENERATION | GPUShaderStage.RAY_CLOSEST_HIT,
         type: "acceleration-container"
       },
       {
@@ -445,7 +435,7 @@ function buildDirectionLightUniformBuffer(device) {
     }),
     rayTracingState: {
       shaderBindingTable,
-      maxRecursionDepth: 1
+      maxRecursionDepth: 2
     }
   });
 

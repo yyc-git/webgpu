@@ -1,5 +1,6 @@
 import R from "ramda";
 import glMatrix from "gl-matrix";
+import * as TypeArrayUtils from "./typearrayUtils.mjs";
 
 let _buildTriangleVertexData = () => {
     let vertices = [
@@ -136,11 +137,25 @@ export let getSceneTransformDataWithGeometryIndex = () => {
             [1, 1, 1],
         )],
         [1, _buildTransformData(
-            [-3, 0, 0],
-            [10, 0, 0],
-            [1, 1, 1],
+            [0, -5, 0],
+            [0, 0, 0],
+            [10, 10, 10],
         )]
     ]
+};
+
+export let getSceneDirectionLightData = () => {
+    return TypeArrayUtils.newFloat32Array([
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+
+        0.0,
+        1.0,
+        1.0,
+        0.0
+    ])
 };
 
 
