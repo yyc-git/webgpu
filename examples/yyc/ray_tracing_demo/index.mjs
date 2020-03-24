@@ -8,6 +8,8 @@ import * as ManageAccelartionContainer from "./manageAccelerationContainer.mjs";
 import glMatrix from "gl-matrix";
 import * as BufferPaddingUtils from "./bufferPaddingUtils.mjs";
 import { createShaderBindingTable } from "./manageShaderBindingTable.mjs";
+import * as ArcballCameraControl from './arcballCameraControl.mjs';
+
 
 Object.assign(global, WebGPU);
 Object.assign(global, glMatrix);
@@ -204,7 +206,7 @@ function buildDirectionLightUniformBuffer(device) {
   let window = new WebGPUWindow({
     width: 640,
     height: 480,
-    title: "WebGPU",
+    title: "WebGPU+RTX",
     resizable: false
   });
 
@@ -226,23 +228,37 @@ function buildDirectionLightUniformBuffer(device) {
     format: swapChainFormat
   });
 
+
+
+
+
+
+
+  ArcballCameraControl.init(window);
+
+
+
+
+
+
+
   let aspect = Math.abs(window.width / window.height);
 
-  let mView = mat4.create();
-  let mProjection = mat4.create();
+  let mViewInverse = mat4.create();
+  let mProjectionInverse = mat4.create();
 
-  // mat4.perspective(mProjection, (2 * Math.PI) / 5, -aspect, 0.1, 4096.0);
-  mat4.perspective(mProjection, (2 * Math.PI) / 5, aspect, 0.1, 4096.0);
+  // mat4.perspective(mProjectionInverse, (2 * Math.PI) / 5, -aspect, 0.1, 4096.0);
+  // mat4.perspective(mProjectionInverse, (2 * Math.PI) / 5, aspect, 0.1, 4096.0);
 
-  // mat4.translate(mView, mView, vec3.fromValues(0, 0, -2));
+  // mat4.translate(mViewInverse, mViewInverse, vec3.fromValues(0, 0, -2));
 
-  // mat4.lookAt(mView, vec3.fromValues(0, 2, 2), vec3.fromValues(0, 2, 0), vec3.fromValues(0, 1, 0));
-  mat4.lookAt(mView, vec3.fromValues(0, 0, 10), vec3.fromValues(0, 0, 0), vec3.fromValues(0, 1, 0));
+  // mat4.lookAt(mViewInverse, vec3.fromValues(0, 2, 2), vec3.fromValues(0, 2, 0), vec3.fromValues(0, 1, 0));
+  // mat4.lookAt(mViewInverse, vec3.fromValues(0, 0, 10), vec3.fromValues(0, 0, 0), vec3.fromValues(0, 1, 0));
 
   // invert
-  mat4.invert(mView, mView);
-  mat4.invert(mProjection, mProjection);
-  // mProjection[5] *= -1.0;
+  // mat4.invert(mViewInverse, mViewInverse);
+  // mat4.invert(mProjectionInverse, mProjectionInverse);
+  // mProjectionInverse[5] *= -1.0;
 
   let baseShaderPath = `examples/yyc/ray_tracing_demo/shaders`;
 
@@ -334,23 +350,14 @@ function buildDirectionLightUniformBuffer(device) {
 
   let cameraData = new Float32Array(
     // (mat4) view
-    mView.byteLength +
+    mViewInverse.byteLength +
     // (mat4) projection
-    mProjection.byteLength
+    mProjectionInverse.byteLength
   );
   let cameraUniformBuffer = device.createBuffer({
     size: cameraData.byteLength,
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM
   });
-  // fill in the data
-  {
-    let offset = 0x0;
-    cameraData.set(mView, offset);
-    offset += mView.length;
-    cameraData.set(mProjection, offset);
-    offset += mProjection.length;
-  }
-  cameraUniformBuffer.setSubData(0, cameraData);
 
   let rtGenBindGroup = device.createBindGroup({
     layout: rtGenBindGroupLayout,
@@ -510,8 +517,31 @@ function buildDirectionLightUniformBuffer(device) {
     }]
   });
 
+  function _updateViewMatrixInverse([aspect, fovy, near, far], [mViewInverse, mProjectionInverse], [cameraData, cameraUniformBuffer]) {
+    let lookFrom = ArcballCameraControl.getLookFrom();
+    let lookAt = ArcballCameraControl.getTarget();
+    let up = vec3.fromValues(0, 1, 0);
+
+    mat4.perspective(mProjectionInverse, fovy, aspect, near, far);
+    mat4.lookAt(mViewInverse, lookFrom, lookAt, up);
+    mat4.invert(mViewInverse, mViewInverse);
+    mat4.invert(mProjectionInverse, mProjectionInverse);
+
+
+    {
+      let offset = 0x0;
+      cameraData.set(mViewInverse, offset);
+      offset += mViewInverse.length;
+      cameraData.set(mProjectionInverse, offset);
+      offset += mProjectionInverse.length;
+    }
+    cameraUniformBuffer.setSubData(0, cameraData);
+  }
+
   function onFrame() {
     if (!window.shouldClose()) setTimeout(onFrame, 1e3 / 60);
+
+    _updateViewMatrixInverse([aspect, (2 * Math.PI) / 5, 0.1, 4096.0], [mViewInverse, mProjectionInverse], [cameraData, cameraUniformBuffer]);
 
     let backBufferView = swapChain.getCurrentTextureView();
 
