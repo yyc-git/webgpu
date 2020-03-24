@@ -18,12 +18,12 @@
     "tests": "node --experimental-modules examples/yyc/ray_tracing_demo/index.mjs"
   },
   "devDependencies": {
-    "eslint": "^6.8.0",
     "ncp": "^2.0.0",
     "node-addon-api": "^1.7.1",
     "nunjucks": "^3.2.0"
   },
   "dependencies": {
+    "clang-format": "^1.4.0",
     "gl-matrix": "^3.2.1",
     "ramda": "^0.27.0"
   },

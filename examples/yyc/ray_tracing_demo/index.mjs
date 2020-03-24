@@ -6,16 +6,20 @@ import * as Scene from "./scene.mjs";
 import * as TypeArrayUtils from "./typearrayUtils.mjs";
 import * as ManageAccelartionContainer from "./manageAccelerationContainer.mjs";
 import glMatrix from "gl-matrix";
+import * as BufferPaddingUtils from "./bufferPaddingUtils.mjs";
 import { createShaderBindingTable } from "./manageShaderBindingTable.mjs";
 
 Object.assign(global, WebGPU);
 Object.assign(global, glMatrix);
 
-
 function buildSceneDescBuffer(device) {
   let instanceCount = Scene.getSceneInstanCount();
 
-  let sceneDescDataCount = 2;
+  // let sceneDescDataCount = 1 + 1 + 9 + 16;
+  // let sceneDescDataCount = 1 + 1 + 9;
+  // let sceneDescDataCount = 1 + 1 + 16;
+  // let sceneDescDataCount = 1 + 1 + 4;
+  let sceneDescDataCount = 4 + 4 + 12 + 16;
   let sceneDescBufferSize = instanceCount * sceneDescDataCount * Float32Array.BYTES_PER_ELEMENT;
   let sceneDescBuffer = device.createBuffer({
     size: sceneDescBufferSize,
@@ -23,17 +27,20 @@ function buildSceneDescBuffer(device) {
   });
 
 
-  let sceneDescData =
-    Scene.getSceneInstanceData()
-      .reduce((sceneDescData, [vertexOffset, indexOffset], i) => {
-        sceneDescData[i * sceneDescDataCount + 0] = vertexOffset;
-        sceneDescData[i * sceneDescDataCount + 1] = indexOffset;
 
-        return sceneDescData;
-      }, TypeArrayUtils.newFloat32Array(
+  let [sceneDescData, _] =
+    Scene.getSceneGameObjectData()
+      .reduce(([sceneDescData, offset], [compressedData, normalMatrix, modelMatrix], i) => {
+        sceneDescData.set(compressedData, offset);
+
+        var [sceneDescData, offset] = BufferPaddingUtils.setMat3DataToBufferData(offset + 4, normalMatrix, sceneDescData);
+
+        sceneDescData.set(modelMatrix, offset);
+
+        return [sceneDescData, offset + 16];
+      }, [TypeArrayUtils.newFloat32Array(
         sceneDescBufferSize / Float32Array.BYTES_PER_ELEMENT
-      ));
-
+      ), 0]);
 
   console.log("sceneDescData:", sceneDescData)
 
@@ -55,16 +62,16 @@ function buildIndexBuffer(device) {
 
 
 
-  let indexData =
+  let [indexData, _] =
     Scene.getSceneIndexData()
-      .reduce((indexData, indices, i) => {
+      .reduce(([indexData, offset], indices, i) => {
         indexData.set(indices, i * indexDataCount)
 
-        return indexData;
+        return [indexData, offset + 3];
       },
-        TypeArrayUtils.newUint32Array(
+        [TypeArrayUtils.newUint32Array(
           indexBufferSize / Uint32Array.BYTES_PER_ELEMENT
-        ));
+        ), 0]);
 
 
 
@@ -108,13 +115,36 @@ function buildVertexBuffer(device) {
 
 
 
-
   console.log("vertexData:", vertexData);
 
   WebGPUUtils.setSubData(0, vertexData, vertexBuffer);
 
   return [vertexBufferSize, vertexBuffer];
 }
+
+
+function buildDirectionLightUniformBuffer(device) {
+  let directionLightData = TypeArrayUtils.newFloat32Array([
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+
+    0.0,
+    0.0,
+    1.0,
+    0.0
+  ]);
+  let directionLightUniformBuffer = device.createBuffer({
+    size: directionLightData.byteLength,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM
+  });
+
+  directionLightUniformBuffer.setSubData(0, directionLightData);
+
+  return [directionLightData.byteLength, directionLightUniformBuffer];
+}
+
 
 
 
@@ -231,6 +261,11 @@ function buildVertexBuffer(device) {
         binding: 2,
         visibility: GPUShaderStage.RAY_CLOSEST_HIT,
         type: "readonly-storage-buffer"
+      },
+      {
+        binding: 3,
+        visibility: GPUShaderStage.RAY_CLOSEST_HIT,
+        type: "uniform-buffer"
       }
     ]
   });
@@ -286,6 +321,7 @@ function buildVertexBuffer(device) {
   let [sceneDescBufferSize, sceneDescBuffer] = buildSceneDescBuffer(device);
   let [indexBufferSize, indexBuffer] = buildIndexBuffer(device);
   let [vertexBufferSize, vertexBuffer] = buildVertexBuffer(device);
+  let [directionLightBufferSize, directionLightBuffer] = buildDirectionLightUniformBuffer(device);
 
 
   let rtCHitBindGroup = device.createBindGroup({
@@ -308,6 +344,12 @@ function buildVertexBuffer(device) {
         buffer: indexBuffer,
         offset: 0,
         size: indexBufferSize
+      },
+      {
+        binding: 3,
+        buffer: directionLightBuffer,
+        offset: 0,
+        size: directionLightBufferSize
       }
     ]
   });
