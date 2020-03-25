@@ -2,8 +2,10 @@
 #extension GL_NV_ray_tracing : require
 #pragma shader_stage(miss)
 
-layout(location = 0) rayPayloadInNV vec3 hitValue;
+#include "raycommon.glsl"
+
+layout(location = 0) rayPayloadInNV hitPayload prd;
 
 void main() {
-  hitValue = vec3(0.15);
+  prd.hitValue = vec3(0.15);
 }

@@ -5,34 +5,36 @@
 #extension GL_GOOGLE_include_directive : enable
 #pragma shader_stage(closest)
 
+#include "raycommon.glsl"
 #include "wavefront.glsl"
 
-layout(location = 0) rayPayloadInNV vec3 hitValue;
+
+layout(location = 0) rayPayloadInNV hitPayload prd;
 layout(location = 1) rayPayloadNV bool isShadowed;
 
-layout(set = 0, binding = 0) uniform accelerationStructureNV topLevelAS;
+layout(set = 1, binding = 0) uniform accelerationStructureNV topLevelAS;
 
-layout(std140, set = 1, binding = 0) buffer SceneDesc { InstanceData i[]; }
+layout(std140, set = 2, binding = 0) buffer SceneDesc { InstanceData i[]; }
 sceneDesc;
 
-layout(std140, set = 1, binding = 1) buffer SceneObjOffsetData {
+layout(std140, set = 2, binding = 1) buffer SceneObjOffsetData {
   ObjOffsetData o[];
 }
 sceneObjOffsetData;
 
 // TODO use array of blocks!how to upload data???
 // TODO should use scalar, but it not work!!!use std 140 instead
-layout(scalar, set = 1, binding = 2) buffer Vertices { Vertex v[]; }
+layout(scalar, set = 2, binding = 2) buffer Vertices { Vertex v[]; }
 vertices;
-layout(scalar, set = 1, binding = 3) buffer Indices { uint i[]; }
+layout(scalar, set = 2, binding = 3) buffer Indices { uint i[]; }
 indices;
 
-layout(std140, set = 1, binding = 4) buffer MatColorBufferObject {
+layout(std140, set = 2, binding = 4) buffer MatColorBufferObject {
   PhongMaterial m[];
 }
 materials;
 
-layout(std140, set = 1, binding = 5) uniform DirectionLight {
+layout(std140, set = 2, binding = 5) uniform DirectionLight {
   vec4 compressedData;
   vec4 position;
 }
@@ -167,7 +169,7 @@ void main() {
     }
   }
 
-  hitValue = vec3(lightIntensity * attenuation * (diffuse + specular));
+  prd.hitValue = vec3(lightIntensity * attenuation * (diffuse + specular));
 
   // hitValue = vec3(dotNL);
 

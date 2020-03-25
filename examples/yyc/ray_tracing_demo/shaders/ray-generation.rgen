@@ -2,34 +2,80 @@
 #extension GL_NV_ray_tracing : require
 #pragma shader_stage(raygen)
 
-layout(location = 0) rayPayloadNV vec3 hitValue;
+#include "constants.glsl"
+#include "random.glsl"
+#include "raycommon.glsl"
 
-layout(set = 0, binding = 0) uniform accelerationStructureNV topLevelAS;
+layout(location = 0) rayPayloadNV hitPayload prd;
 
-layout(std140, set = 0, binding = 1) buffer PixelBuffer {
-  vec4 pixels[];
-} pixelBuffer;
+layout(std140, set = 0, binding = 0) uniform Constants { vec4 compressedData; }
+pushC;
 
-layout(set = 0, binding = 2) uniform Camera {
+layout(set = 1, binding = 0) uniform accelerationStructureNV topLevelAS;
+
+layout(std140, set = 1, binding = 1) buffer PixelBuffer { vec4 pixels[]; }
+pixelBuffer;
+
+layout(std140, set = 1, binding = 2) uniform Camera {
   mat4 viewInverse;
   mat4 projectionInverse;
-} uCamera;
+}
+uCamera;
 
 void main() {
-  ivec2 ipos = ivec2(gl_LaunchIDNV.xy);
-  const ivec2 resolution = ivec2(gl_LaunchSizeNV.xy);
+  vec4 constantsCompressedData = pushC.compressedData;
+  uint frame = getFrame(constantsCompressedData);
+  uint nbsamples = getNBSamples(constantsCompressedData);
 
-  const vec2 offset = vec2(0);
-  const vec2 pixel = vec2(ipos.x, ipos.y);
-  const vec2 uv = (pixel / gl_LaunchSizeNV.xy) * 2.0 - 1.0;
+  // Initialize the random number
+  uint seed = tea(gl_LaunchIDNV.y * gl_LaunchSizeNV.x + gl_LaunchIDNV.x, frame);
 
-  vec4 origin = uCamera.viewInverse * vec4(offset, 0, 1);
-  vec4 target = uCamera.projectionInverse * (vec4(uv.x, uv.y, 1, 1));
-  vec4 direction = uCamera.viewInverse * vec4(normalize(target.xyz), 0);
+  vec3 hitValues = vec3(0);
 
-  hitValue = vec3(0);
-  traceNV(topLevelAS, gl_RayFlagsOpaqueNV, 0xFF, 0, 0, 0, origin.xyz, 0.01, direction.xyz, 4096.0, 0);
+  for (uint smpl = 0; smpl < nbsamples; smpl++) {
+    float r1 = rnd(seed);
+    float r2 = rnd(seed);
+    // Subpixel jitter: send the ray through a different position inside the
+    // pixel each time, to provide antialiasing.
+    vec2 subpixel_jitter = frame == 0 ? vec2(0.5f, 0.5f) : vec2(r1, r2);
 
-  const uint pixelIndex = ipos.y * resolution.x + ipos.x;
-  pixelBuffer.pixels[pixelIndex] = vec4(hitValue, 1);
+    const vec2 pixelCenter = vec2(gl_LaunchIDNV.xy) + subpixel_jitter;
+    const vec2 inUV = pixelCenter / vec2(gl_LaunchSizeNV.xy);
+    vec2 d = inUV * 2.0 - 1.0;
+
+    vec4 origin = uCamera.viewInverse * vec4(0, 0, 0, 1);
+    vec4 target = uCamera.projectionInverse * vec4(d.x, d.y, 1, 1);
+    vec4 direction = uCamera.viewInverse * vec4(normalize(target.xyz), 0);
+
+    uint rayFlags = gl_RayFlagsOpaqueNV;
+    float tMin = 0.001;
+    float tMax = 10000.0;
+
+    traceNV(topLevelAS,    // acceleration structure
+            rayFlags,      // rayFlags
+            0xFF,          // cullMask
+            0,             // sbtRecordOffset
+            0,             // sbtRecordStride
+            0,             // missIndex
+            origin.xyz,    // ray origin
+            tMin,          // ray min range
+            direction.xyz, // ray direction
+            tMax,          // ray max range
+            0              // payload (location = 0)
+    );
+    hitValues += prd.hitValue;
+  }
+  prd.hitValue = hitValues / nbsamples;
+
+  const uint pixelIndex = gl_LaunchIDNV.y * gl_LaunchSizeNV.x + gl_LaunchIDNV.x;
+
+  // Do accumulation over time
+  if (frame > 0) {
+    float a = 1.0f / float(frame + 1);
+    vec3 old_color = pixelBuffer.pixels[pixelIndex].rgb;
+    pixelBuffer.pixels[pixelIndex] = vec4(mix(old_color, prd.hitValue, a), 1.f);
+  } else {
+    // First frame, replace the value in the buffer
+    pixelBuffer.pixels[pixelIndex] = vec4(prd.hitValue, 1.f);
+  }
 }

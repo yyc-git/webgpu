@@ -9,10 +9,48 @@ import glMatrix from "gl-matrix";
 import * as BufferPaddingUtils from "./bufferPaddingUtils.mjs";
 import { createShaderBindingTable } from "./manageShaderBindingTable.mjs";
 import * as ArcballCameraControl from './arcballCameraControl.mjs';
+import * as ManangeCameraMatrixUtils from "./manangeCameraMatrixUtils.mjs";
+import * as AA from "./aa.mjs";
 
 
 Object.assign(global, WebGPU);
 Object.assign(global, glMatrix);
+
+
+
+function buildConstantsBuffer(device) {
+  let constantsDataCount = 4;
+  let constantsBufferSize = constantsDataCount * Float32Array.BYTES_PER_ELEMENT;
+  let constantsBuffer = device.createBuffer({
+    size: constantsBufferSize,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM
+  });
+
+  let constantsData = TypeArrayUtils.newFloat32Array(
+    constantsBufferSize / Float32Array.BYTES_PER_ELEMENT
+  );
+  constantsData[0] = AA.getFrame();
+  constantsData[1] = AA.getNBSamples();
+
+  console.log("constantsData:", constantsData)
+
+  return [constantsBufferSize, constantsData, constantsBuffer];
+}
+
+
+function buildCameraBuffer(device) {
+  let cameraBufferSize = ManangeCameraMatrixUtils.getCameraBufferSize();
+  let cameraData = new Float32Array(
+    cameraBufferSize / Float32Array.BYTES_PER_ELEMENT
+  );
+  let cameraBuffer = device.createBuffer({
+    size: cameraBufferSize,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM
+  });
+
+  return [cameraBufferSize, cameraData, cameraBuffer];
+}
+
 
 function buildSceneDescBuffer(device) {
   let instanceCount = Scene.getSceneInstanCount();
@@ -237,28 +275,9 @@ function buildDirectionLightUniformBuffer(device) {
   ArcballCameraControl.init(window);
 
 
+  ManangeCameraMatrixUtils.init();
 
 
-
-
-
-  let aspect = Math.abs(window.width / window.height);
-
-  let mViewInverse = mat4.create();
-  let mProjectionInverse = mat4.create();
-
-  // mat4.perspective(mProjectionInverse, (2 * Math.PI) / 5, -aspect, 0.1, 4096.0);
-  // mat4.perspective(mProjectionInverse, (2 * Math.PI) / 5, aspect, 0.1, 4096.0);
-
-  // mat4.translate(mViewInverse, mViewInverse, vec3.fromValues(0, 0, -2));
-
-  // mat4.lookAt(mViewInverse, vec3.fromValues(0, 2, 2), vec3.fromValues(0, 2, 0), vec3.fromValues(0, 1, 0));
-  // mat4.lookAt(mViewInverse, vec3.fromValues(0, 0, 10), vec3.fromValues(0, 0, 0), vec3.fromValues(0, 1, 0));
-
-  // invert
-  // mat4.invert(mViewInverse, mViewInverse);
-  // mat4.invert(mProjectionInverse, mProjectionInverse);
-  // mProjectionInverse[5] *= -1.0;
 
   let baseShaderPath = `examples/yyc/ray_tracing_demo/shaders`;
 
@@ -291,6 +310,16 @@ function buildDirectionLightUniformBuffer(device) {
   let instanceContainer = ManageAccelartionContainer.buildContainers(device, queue);
 
 
+
+  let rtConstantsBindGroupLayout = device.createBindGroupLayout({
+    bindings: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.RAY_GENERATION,
+        type: "uniform-buffer"
+      }
+    ]
+  });
 
   let rtGenBindGroupLayout = device.createBindGroupLayout({
     bindings: [
@@ -348,16 +377,28 @@ function buildDirectionLightUniformBuffer(device) {
   });
 
 
-  let cameraData = new Float32Array(
-    // (mat4) view
-    mViewInverse.byteLength +
-    // (mat4) projection
-    mProjectionInverse.byteLength
-  );
-  let cameraUniformBuffer = device.createBuffer({
-    size: cameraData.byteLength,
-    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM
+
+
+  let [constantsBufferSize, constantsData, constantsBuffer] = buildConstantsBuffer(device);
+
+
+  let rtConstantsBindGroup = device.createBindGroup({
+    layout: rtConstantsBindGroupLayout,
+    bindings: [
+      {
+        binding: 0,
+        buffer: constantsBuffer,
+        offset: 0,
+        size: constantsBufferSize
+      }
+    ]
   });
+
+
+
+
+  let [cameraBufferSize, cameraData, cameraBuffer] = buildCameraBuffer(device);
+
 
   let rtGenBindGroup = device.createBindGroup({
     layout: rtGenBindGroupLayout,
@@ -376,9 +417,9 @@ function buildDirectionLightUniformBuffer(device) {
       },
       {
         binding: 2,
-        buffer: cameraUniformBuffer,
+        buffer: cameraBuffer,
         offset: 0,
-        size: cameraData.byteLength
+        size: cameraBufferSize
       }
     ]
   });
@@ -438,7 +479,7 @@ function buildDirectionLightUniformBuffer(device) {
 
   let rtPipeline = device.createRayTracingPipeline({
     layout: device.createPipelineLayout({
-      bindGroupLayouts: [rtGenBindGroupLayout, rtCHitBindGroupLayout]
+      bindGroupLayouts: [rtConstantsBindGroupLayout, rtGenBindGroupLayout, rtCHitBindGroupLayout]
     }),
     rayTracingState: {
       shaderBindingTable,
@@ -517,41 +558,58 @@ function buildDirectionLightUniformBuffer(device) {
     }]
   });
 
-  function _updateViewMatrixInverse([aspect, fovy, near, far], [mViewInverse, mProjectionInverse], [cameraData, cameraUniformBuffer]) {
+  function _updateViewMatrixInverse([aspect, fovy, near, far], [cameraData, cameraBuffer]) {
     let lookFrom = ArcballCameraControl.getLookFrom();
     let lookAt = ArcballCameraControl.getTarget();
     let up = vec3.fromValues(0, 1, 0);
 
-    mat4.perspective(mProjectionInverse, fovy, aspect, near, far);
-    mat4.lookAt(mViewInverse, lookFrom, lookAt, up);
-    mat4.invert(mViewInverse, mViewInverse);
-    mat4.invert(mProjectionInverse, mProjectionInverse);
-
+    let [viewMatrixInverse, projectionMatrixInverse] = ManangeCameraMatrixUtils.updateViewMatrixInverse([lookFrom, lookAt, up], [aspect, fovy, near, far])
 
     {
       let offset = 0x0;
-      cameraData.set(mViewInverse, offset);
-      offset += mViewInverse.length;
-      cameraData.set(mProjectionInverse, offset);
-      offset += mProjectionInverse.length;
+      cameraData.set(viewMatrixInverse, offset);
+      offset += viewMatrixInverse.length;
+      cameraData.set(projectionMatrixInverse, offset);
+      offset += projectionMatrixInverse.length;
     }
-    cameraUniformBuffer.setSubData(0, cameraData);
+    cameraBuffer.setSubData(0, cameraData);
+  }
+
+  function _updateCameraUniformBuffer([aspect, fovy, near, far], [cameraData, cameraBuffer]) {
+    _updateViewMatrixInverse([aspect, fovy, near, far], [cameraData, cameraBuffer]);
+  }
+
+  function _updateFrame(frame, [constantsData, constantsBuffer]) {
+    constantsData[0] = frame;
+    constantsBuffer.setSubData(0, constantsData);
+  }
+
+  function _updateConstantsUniformBuffer(frame, [constantsData, constantsBuffer]) {
+    _updateFrame(frame, [constantsData, constantsBuffer]);
+  }
+
+  function _updateUniformBuffers([cameraData, cameraBuffer], [constantsData, constantsBuffer]) {
+    _updateCameraUniformBuffer([Math.abs(window.width / window.height), (2 * Math.PI) / 5, 0.1, 4096.0], [cameraData, cameraBuffer]);
+    _updateConstantsUniformBuffer(AA.getFrame(), [constantsData, constantsBuffer])
   }
 
   function onFrame() {
     if (!window.shouldClose()) setTimeout(onFrame, 1e3 / 60);
 
-    _updateViewMatrixInverse([aspect, (2 * Math.PI) / 5, 0.1, 4096.0], [mViewInverse, mProjectionInverse], [cameraData, cameraUniformBuffer]);
+    _updateUniformBuffers([cameraData, cameraBuffer], [constantsData, constantsBuffer]);
 
     let backBufferView = swapChain.getCurrentTextureView();
 
     // ray tracing pass
-    {
+    if (AA.notReachMaxFrame()) {
+      console.log("ray tracing", constantsData[0]);
+      
       let commandEncoder = device.createCommandEncoder({});
       let passEncoder = commandEncoder.beginRayTracingPass({});
       passEncoder.setPipeline(rtPipeline);
-      passEncoder.setBindGroup(0, rtGenBindGroup);
-      passEncoder.setBindGroup(1, rtCHitBindGroup);
+      passEncoder.setBindGroup(0, rtConstantsBindGroup);
+      passEncoder.setBindGroup(1, rtGenBindGroup);
+      passEncoder.setBindGroup(2, rtCHitBindGroup);
       passEncoder.traceRays(
         0, // sbt ray-generation offset
         1, // sbt ray-hit offset
@@ -586,6 +644,9 @@ function buildDirectionLightUniformBuffer(device) {
     }
 
     swapChain.present();
+
+    AA.updateFrame();
+
     window.pollEvents();
   };
   setTimeout(onFrame, 1e3 / 60);

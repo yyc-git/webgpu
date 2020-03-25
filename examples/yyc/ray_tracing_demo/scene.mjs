@@ -1,6 +1,7 @@
 import R from "ramda";
 import glMatrix from "gl-matrix";
 import * as TypeArrayUtils from "./typearrayUtils.mjs";
+import * as ManangeCameraMatrixUtils from "./manangeCameraMatrixUtils.mjs";
 
 let _buildTriangleVertexData = () => {
     let vertices = [
@@ -314,4 +315,10 @@ export let getSceneObjData = () => {
 
 export let getSceneInstanCount = () => {
     return 3;
+}
+
+
+// TODO refactor: use event observer?
+export let isCurrentScenePictureChange = () => {
+    return ManangeCameraMatrixUtils.isChange();
 }

@@ -1,11 +1,11 @@
-var _phi = Math.PI / 2;
-var _theta = Math.PI / 2;
-var _target = [0.0, 0.0, 0.0];
-var _rotateSpeed = 1;
-var _wheelSpeed = 1;
-var _distance = 30;
+let _phi = Math.PI / 2;
+let _theta = Math.PI / 2;
+let _target = [0.0, 0.0, 0.0];
+let _rotateSpeed = 1;
+let _wheelSpeed = 1;
+let _distance = 30;
 
-var _isDrag = false;
+let _isDrag = false;
 
 
 function _getWheel(e) {
