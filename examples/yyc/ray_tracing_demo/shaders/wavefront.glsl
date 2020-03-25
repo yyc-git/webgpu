@@ -33,7 +33,6 @@ extract this to avoid duplicate instead of move this into InstanceData.
 struct ObjOffsetData {
   uint vertexOffset;
   uint indexOffset;
-  // uint materialIndex;
 };
 
 struct PhongMaterial {

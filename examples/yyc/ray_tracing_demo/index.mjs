@@ -87,10 +87,10 @@ function buildSceneDescBuffer(device) {
 
 
 function buildSceneObjOffsetDataBuffer(device) {
-  let instanceCount = Scene.getSceneInstanCount();
+  let objCount = Scene.getSceneObjCount();
 
   let sceneObjOffsetDataCount = 2;
-  let sceneObjOffsetBufferSize = instanceCount * sceneObjOffsetDataCount * Uint32Array.BYTES_PER_ELEMENT;
+  let sceneObjOffsetBufferSize = objCount * sceneObjOffsetDataCount * Uint32Array.BYTES_PER_ELEMENT;
   let sceneObjOffsetBuffer = device.createBuffer({
     size: sceneObjOffsetBufferSize,
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
@@ -602,8 +602,6 @@ function buildDirectionLightUniformBuffer(device) {
 
     // ray tracing pass
     if (AA.notReachMaxFrame()) {
-      console.log("ray tracing", constantsData[0]);
-      
       let commandEncoder = device.createCommandEncoder({});
       let passEncoder = commandEncoder.beginRayTracingPass({});
       passEncoder.setPipeline(rtPipeline);

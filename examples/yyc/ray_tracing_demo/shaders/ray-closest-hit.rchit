@@ -17,13 +17,13 @@ layout(set = 1, binding = 0) uniform accelerationStructureNV topLevelAS;
 layout(std140, set = 2, binding = 0) buffer SceneDesc { InstanceData i[]; }
 sceneDesc;
 
-layout(std140, set = 2, binding = 1) buffer SceneObjOffsetData {
+/* scalar work with only uint fields! */
+layout(scalar, set = 2, binding = 1) buffer SceneObjOffsetData {
   ObjOffsetData o[];
 }
 sceneObjOffsetData;
 
 // TODO use array of blocks!how to upload data???
-// TODO should use scalar, but it not work!!!use std 140 instead
 layout(scalar, set = 2, binding = 2) buffer Vertices { Vertex v[]; }
 vertices;
 layout(scalar, set = 2, binding = 3) buffer Indices { uint i[]; }
@@ -94,6 +94,7 @@ void main() {
   ObjOffsetData objOffsetData = getObjOffsetData(objIndex);
   uint vertexOffset = getVertexOffset(objOffsetData);
   uint indexOffset = getIndexOffset(objOffsetData);
+
 
   // Indices of the triangle
   ivec3 ind = getTriangleIndices(indexOffset, gl_PrimitiveID);

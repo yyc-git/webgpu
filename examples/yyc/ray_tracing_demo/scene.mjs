@@ -308,7 +308,6 @@ export let getSceneObjData = () => {
 
     return [
         _buildObjData(0, sceneVertexData),
-        _buildObjData(0, sceneVertexData),
         _buildObjData(1, sceneVertexData),
     ];
 };
@@ -317,6 +316,11 @@ export let getSceneInstanCount = () => {
     return 3;
 }
 
+
+
+export let getSceneObjCount = () => {
+    return 2;
+}
 
 // TODO refactor: use event observer?
 export let isCurrentScenePictureChange = () => {
