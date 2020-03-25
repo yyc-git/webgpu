@@ -60,6 +60,20 @@ let _buildSceneGeometryContainers = (device) => {
         }, [])
 };
 
+let _convertInstanceTransformDataToContainerTransformData = (
+    { translation, rotation, scale }
+) => {
+    return {
+        translation,
+        rotation: {
+            x: -rotation.x,
+            y: -rotation.y,
+            z: -rotation.z,
+        },
+        scale
+    }
+}
+
 let _buildContainers = (device) => {
     let geometryContainers = _buildSceneGeometryContainers(device);
 
@@ -74,7 +88,7 @@ let _buildContainers = (device) => {
                         mask: 0xFF,
                         instanceId: i,
                         instanceOffset: 0x0,
-                        transform: transformData,
+                        transform: _convertInstanceTransformDataToContainerTransformData(transformData),
                         geometryContainer: geometryContainers[geometryIndex]
                     }, instances);
                 }, [])
