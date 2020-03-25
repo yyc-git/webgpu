@@ -17,10 +17,10 @@ layout(std140, set = 2, binding = 0) buffer SceneDesc { InstanceData i[]; }
 sceneDesc;
 
 /* scalar work with only uint fields! */
-layout(scalar, set = 2, binding = 1) buffer SceneObjOffsetData {
-  ObjOffsetData o[];
+layout(scalar, set = 2, binding = 1) buffer SceneGeometryOffsetData {
+  GeometryOffsetData o[];
 }
-sceneObjOffsetData;
+sceneGeometryOffsetData;
 
 // TODO use array of blocks!how to upload data???
 layout(scalar, set = 2, binding = 2) buffer Vertices { Vertex v[]; }
@@ -45,11 +45,13 @@ InstanceData getInstanceData(int instanceIndex) {
   return sceneDesc.i[instanceIndex];
 }
 
-ObjOffsetData getObjOffsetData(uint objIndex) {
-  return sceneObjOffsetData.o[objIndex];
+GeometryOffsetData getGeometryOffsetData(uint geometryIndex) {
+  return sceneGeometryOffsetData.o[geometryIndex];
 }
 
-PhongMaterial getMaterial(uint objIndex) { return materials.m[objIndex]; }
+PhongMaterial getMaterial(uint materialIndex) {
+  return materials.m[materialIndex];
+}
 
 float getDirectionLightIntensity() { return uDirectionLight.compressedData.x; }
 
@@ -66,11 +68,12 @@ Vertex getTriangleVertex(uint vertexOffset, uint index) {
 void main() {
   InstanceData instanceData = getInstanceData(gl_InstanceID);
 
-  vec4 compressedData = getCompressedData(instanceData);
-  uint objIndex = getObjIndex(compressedData);
-  ObjOffsetData objOffsetData = getObjOffsetData(objIndex);
-  uint vertexOffset = getVertexOffset(objOffsetData);
-  uint indexOffset = getIndexOffset(objOffsetData);
+  vec4 instanceDataCompressedData = getInstanceDataCompressedData(instanceData);
+  uint geometryIndex = getGeometryIndex(instanceDataCompressedData);
+  uint materialIndex = getMaterialIndex(instanceDataCompressedData);
+  GeometryOffsetData geometryOffsetData = getGeometryOffsetData(geometryIndex);
+  uint vertexOffset = getVertexOffset(geometryOffsetData);
+  uint indexOffset = getIndexOffset(geometryOffsetData);
 
   // Indices of the triangle
   ivec3 ind = getTriangleIndices(indexOffset, gl_PrimitiveID);
@@ -107,7 +110,7 @@ void main() {
   lightDir = normalize(vec3(uDirectionLight.position) - vec3(0.0));
 
   // float dotNL = max(dot(normal, lightDir), 0.2);
-  PhongMaterial mat = getMaterial(objIndex);
+  PhongMaterial mat = getMaterial(materialIndex);
 
   // Diffuse
   vec3 diffuse = computeDiffuse(mat, lightDir, normal);

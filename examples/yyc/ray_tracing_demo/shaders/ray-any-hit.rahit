@@ -22,15 +22,17 @@ InstanceData getInstanceData(int instanceIndex) {
   return sceneDesc.i[instanceIndex];
 }
 
-PhongMaterial getMaterial(uint objIndex) { return materials.m[objIndex]; }
+PhongMaterial getMaterial(uint materialIndex) {
+  return materials.m[materialIndex];
+}
 
 void main() {
   InstanceData instanceData = getInstanceData(gl_InstanceID);
 
-  vec4 compressedData = getCompressedData(instanceData);
-  uint objIndex = getObjIndex(compressedData);
+  vec4 compressedData = getInstanceDataCompressedData(instanceData);
+  uint materialIndex = getMaterialIndex(compressedData);
 
-  PhongMaterial mat = getMaterial(objIndex);
+  PhongMaterial mat = getMaterial(materialIndex);
   uint illum = getMaterialIllum(mat);
   float dissolve = getMaterialDissolve(mat);
 

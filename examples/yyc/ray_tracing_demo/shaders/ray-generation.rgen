@@ -24,11 +24,8 @@ uCamera;
 
 void main() {
   vec4 constantsCompressedData = pushC.compressedData;
-  // uint frame = getFrame(constantsCompressedData);
-  // uint nbsamples = getNBSamples(constantsCompressedData);
-
-  uint frame = 0;
-  uint nbsamples = 1;
+  uint frame = getFrame(constantsCompressedData);
+  uint nbsamples = getNBSamples(constantsCompressedData);
 
   // Initialize the random number
   uint seed = tea(gl_LaunchIDNV.y * gl_LaunchSizeNV.x + gl_LaunchIDNV.x, frame);

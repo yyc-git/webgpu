@@ -96,8 +96,8 @@ export let getScenePhongMaterialData = () => {
             [1.0, 0.0, 0.0],
             [0.2, 0.0, 1.0],
             36.0,
-            4,
-            0.2
+            2,
+            1
         ),
         _buildPhongMaterialData(
             [0.1, 0.1, 0.1],
@@ -106,6 +106,14 @@ export let getScenePhongMaterialData = () => {
             72.0,
             2,
             1
+        ),
+        _buildPhongMaterialData(
+            [0.1, 0.1, 0.1],
+            [0.0, 0.0, 1.0],
+            [0.2, 0.0, 1.0],
+            36.0,
+            4,
+            0.2
         )
     ]
 };
@@ -143,6 +151,11 @@ export let getSceneTransformDataWithGeometryIndex = () => {
             [0, -5, 0],
             [0, 0, 0],
             [10, 10, 10],
+        )],
+        [0, _buildTransformData(
+            [1, 0, 3],
+            [0, 0, 0],
+            [1, 1, 1],
         )]
     ]
 };
@@ -224,18 +237,18 @@ export let computeSceneVertexBufferDataLength = () => {
     )
 };
 
-let _computeGameObjectIndexOffset = (objIndex, sceneVertexData) => {
+let _computeGameObjectIndexOffset = (geometryIndex, sceneVertexData) => {
     return sceneVertexData
-        .slice(0, objIndex)
+        .slice(0, geometryIndex)
         .reduce((totalIndexCount, indices) => {
             return totalIndexCount + _computeIndexCount(indices);
         }, 0);
 }
 
 
-let _computeGameObjectVertexOffset = (objIndex, sceneVertexData) => {
+let _computeGameObjectVertexOffset = (geometryIndex, sceneVertexData) => {
     return sceneVertexData
-        .slice(0, objIndex)
+        .slice(0, geometryIndex)
         .reduce((offset, vertexData) => {
             return offset + _computeVertexDataCount(vertexData);
         }, 0);
@@ -269,7 +282,7 @@ let _buildNormalMatrix = (modelMatrix) => {
 };
 
 
-let _buildGameObjectData = (objIndex, gameObjectIndex, sceneTransformDataWithGeometryIndex) => {
+let _buildGameObjectData = ([geometryIndex, materialIndex], gameObjectIndex, sceneTransformDataWithGeometryIndex) => {
     let modelMatrix = R.pipe(
         _getTransformData,
         _buildModelMatrix
@@ -279,7 +292,10 @@ let _buildGameObjectData = (objIndex, gameObjectIndex, sceneTransformDataWithGeo
     );
 
     return [
-        objIndex,
+        [
+            geometryIndex,
+            materialIndex,
+        ],
         _buildNormalMatrix(modelMatrix),
         modelMatrix
     ]
@@ -289,39 +305,40 @@ export let getSceneGameObjectData = () => {
     let sceneTransformDataWithGeometryIndex = getSceneTransformDataWithGeometryIndex();
 
     return [
-        _buildGameObjectData(0, 0, sceneTransformDataWithGeometryIndex),
-        _buildGameObjectData(0, 1, sceneTransformDataWithGeometryIndex),
-        _buildGameObjectData(1, 2, sceneTransformDataWithGeometryIndex),
+        _buildGameObjectData([0, 0], 0, sceneTransformDataWithGeometryIndex),
+        _buildGameObjectData([0, 0], 1, sceneTransformDataWithGeometryIndex),
+        _buildGameObjectData([1, 1], 2, sceneTransformDataWithGeometryIndex),
+        _buildGameObjectData([0, 2], 3, sceneTransformDataWithGeometryIndex),
     ];
 };
 
 
-let _buildObjData = (objIndex, sceneVertexData) => {
+let _buildGeometryOffsetData = (geometryIndex, sceneVertexData) => {
     return [
-        _computeGameObjectVertexOffset(objIndex, sceneVertexData),
-        _computeGameObjectIndexOffset(objIndex, sceneVertexData),
+        _computeGameObjectVertexOffset(geometryIndex, sceneVertexData),
+        _computeGameObjectIndexOffset(geometryIndex, sceneVertexData),
     ]
 
 };
 
 
-export let getSceneObjData = () => {
+export let getSceneGeometryOffsetData = () => {
     let sceneVertexData = getSceneVertexData();
 
     return [
-        _buildObjData(0, sceneVertexData),
-        _buildObjData(1, sceneVertexData),
+        _buildGeometryOffsetData(0, sceneVertexData),
+        _buildGeometryOffsetData(1, sceneVertexData),
     ];
 };
 
 export let getSceneInstanCount = () => {
-    return 3;
+    return getSceneGameObjectData().length;
 }
 
 
 
-export let getSceneObjCount = () => {
-    return 2;
+export let getSceneGeometryCount = () => {
+    return getSceneGeometryOffsetData().length;
 }
 
 // TODO refactor: use event observer?

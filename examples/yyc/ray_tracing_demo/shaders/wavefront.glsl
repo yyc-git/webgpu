@@ -10,7 +10,7 @@ struct InstanceData {
    so all aligned to vec4
    */
 
-  // include objIndex
+  // include geometryIndex, materialIndex
   vec4 compressedData;
 
   mat3 normalMatrix;
@@ -30,7 +30,7 @@ struct Vertex {
 /*
 extract this to avoid duplicate instead of move this into InstanceData.
 */
-struct ObjOffsetData {
+struct GeometryOffsetData {
   uint vertexOffset;
   uint indexOffset;
 };
@@ -51,18 +51,20 @@ struct PhongMaterial {
   //  int   textureId;
 };
 
-vec4 getCompressedData(InstanceData instanceData) {
+vec4 getInstanceDataCompressedData(InstanceData instanceData) {
   return instanceData.compressedData;
 }
 
-uint getObjIndex(vec4 compressedData) { return uint(compressedData.x); }
+uint getGeometryIndex(vec4 compressedData) { return uint(compressedData.x); }
 
-uint getVertexOffset(ObjOffsetData objOffsetData) {
-  return objOffsetData.vertexOffset;
+uint getMaterialIndex(vec4 compressedData) { return uint(compressedData.y); }
+
+uint getVertexOffset(GeometryOffsetData geometryOffsetData) {
+  return geometryOffsetData.vertexOffset;
 }
 
-uint getIndexOffset(ObjOffsetData objOffsetData) {
-  return objOffsetData.indexOffset;
+uint getIndexOffset(GeometryOffsetData geometryOffsetData) {
+  return geometryOffsetData.indexOffset;
 }
 
 mat3 getNormalMatrix(InstanceData instanceData) {

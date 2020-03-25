@@ -66,8 +66,8 @@ function buildSceneDescBuffer(device) {
 
   let [sceneDescData, _] =
     Scene.getSceneGameObjectData()
-      .reduce(([sceneDescData, offset], [objIndex, normalMatrix, modelMatrix], i) => {
-        sceneDescData[offset] = objIndex;
+      .reduce(([sceneDescData, offset], [compressedData, normalMatrix, modelMatrix], i) => {
+        sceneDescData.set(compressedData, offset);
 
         var [sceneDescData, offset] = BufferPaddingUtils.setMat3DataToBufferData(offset + 4, normalMatrix, sceneDescData);
 
@@ -86,33 +86,33 @@ function buildSceneDescBuffer(device) {
 }
 
 
-function buildSceneObjOffsetDataBuffer(device) {
-  let objCount = Scene.getSceneObjCount();
+function buildSceneGeometryOffsetDataBuffer(device) {
+  let objCount = Scene.getSceneGeometryCount();
 
-  let sceneObjOffsetDataCount = 2;
-  let sceneObjOffsetBufferSize = objCount * sceneObjOffsetDataCount * Uint32Array.BYTES_PER_ELEMENT;
-  let sceneObjOffsetBuffer = device.createBuffer({
-    size: sceneObjOffsetBufferSize,
+  let sceneGeometryOffsetDataCount = 2;
+  let sceneGeometryOffsetBufferSize = objCount * sceneGeometryOffsetDataCount * Uint32Array.BYTES_PER_ELEMENT;
+  let sceneGeometryOffsetBuffer = device.createBuffer({
+    size: sceneGeometryOffsetBufferSize,
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
   });
 
 
-  let [sceneObjOffsetData, _] =
-    Scene.getSceneObjData()
-      .reduce(([sceneObjOffsetData, offset], [vertexOffset, indexOffset], i) => {
-        sceneObjOffsetData[offset] = vertexOffset;
-        sceneObjOffsetData[offset + 1] = indexOffset;
+  let [sceneGeometryOffsetData, _] =
+    Scene.getSceneGeometryOffsetData()
+      .reduce(([sceneGeometryOffsetData, offset], [vertexOffset, indexOffset], i) => {
+        sceneGeometryOffsetData[offset] = vertexOffset;
+        sceneGeometryOffsetData[offset + 1] = indexOffset;
 
-        return [sceneObjOffsetData, offset + 2];
+        return [sceneGeometryOffsetData, offset + 2];
       }, [TypeArrayUtils.newUint32Array(
-        sceneObjOffsetBufferSize / Uint32Array.BYTES_PER_ELEMENT
+        sceneGeometryOffsetBufferSize / Uint32Array.BYTES_PER_ELEMENT
       ), 0]);
 
-  console.log("sceneObjOffsetData:", sceneObjOffsetData)
+  console.log("sceneGeometryOffsetData:", sceneGeometryOffsetData)
 
-  WebGPUUtils.setSubData(0, sceneObjOffsetData, sceneObjOffsetBuffer);
+  WebGPUUtils.setSubData(0, sceneGeometryOffsetData, sceneGeometryOffsetBuffer);
 
-  return [sceneObjOffsetBufferSize, sceneObjOffsetBuffer];
+  return [sceneGeometryOffsetBufferSize, sceneGeometryOffsetBuffer];
 }
 
 
@@ -291,13 +291,7 @@ function buildDirectionLightUniformBuffer(device) {
   });
 
 
-    console.log("ggsddfsf");
-
   let shaderBindingTable = createShaderBindingTable(baseShaderPath, device);
-
-
-    console.log("bbb");
-
 
 
   // this storage buffer is used as a pixel buffer
@@ -434,7 +428,7 @@ function buildDirectionLightUniformBuffer(device) {
 
 
   let [sceneDescBufferSize, sceneDescBuffer] = buildSceneDescBuffer(device);
-  let [sceneObjOffsetDataBufferSize, sceneObjOffsetDataBuffer] = buildSceneObjOffsetDataBuffer(device);
+  let [sceneGeometryOffsetDataBufferSize, sceneGeometryOffsetDataBuffer] = buildSceneGeometryOffsetDataBuffer(device);
   let [indexBufferSize, indexBuffer] = buildIndexBuffer(device);
   let [vertexBufferSize, vertexBuffer] = buildVertexBuffer(device);
   let [phongMaterialBufferSize, phongMaterialBuffer] = buildPhongMaterialBuffer(device);
@@ -452,9 +446,9 @@ function buildDirectionLightUniformBuffer(device) {
       },
       {
         binding: 1,
-        buffer: sceneObjOffsetDataBuffer,
+        buffer: sceneGeometryOffsetDataBuffer,
         offset: 0,
-        size: sceneObjOffsetDataBufferSize
+        size: sceneGeometryOffsetDataBufferSize
       },
       {
         binding: 2,
