@@ -1,0 +1,44 @@
+#version 460
+#extension GL_NV_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_GOOGLE_include_directive : enable
+#pragma shader_stage(anyhit)
+
+#include "random.glsl"
+#include "raycommon.glsl"
+#include "wavefront.glsl"
+
+layout(location = 0) rayPayloadInNV hitPayload prd;
+
+layout(std140, set = 2, binding = 0) buffer SceneDesc { InstanceData i[]; }
+sceneDesc;
+layout(std140, set = 2, binding = 4) buffer MatColorBufferObject {
+  PhongMaterial m[];
+}
+materials;
+
+InstanceData getInstanceData(int instanceIndex) {
+  return sceneDesc.i[instanceIndex];
+}
+
+PhongMaterial getMaterial(uint objIndex) { return materials.m[objIndex]; }
+
+void main() {
+  InstanceData instanceData = getInstanceData(gl_InstanceID);
+
+  vec4 compressedData = getCompressedData(instanceData);
+  uint objIndex = getObjIndex(compressedData);
+
+  PhongMaterial mat = getMaterial(objIndex);
+  uint illum = getMaterialIllum(mat);
+  float dissolve = getMaterialDissolve(mat);
+
+  if (illum != 4)
+    return;
+
+  if (dissolve == 0.0)
+    ignoreIntersectionNV();
+  else if (rnd(prd.seed) > dissolve)
+    ignoreIntersectionNV();
+}

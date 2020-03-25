@@ -42,15 +42,36 @@ struct PhongMaterial {
   // vec3  transmittance;
   // vec3  emission;
 
-  // include shininess,illum
+  // include shininess,illum,dissolve
   // illumination model (http://www.fileformat.info/format/material/)
+  // float dissolve;  // 1 == opaque; 0 == fully transparent
   vec4 compressedData;
 
   // float ior;       // index of refraction
-  // float dissolve;  // 1 == opaque; 0 == fully transparent
-  // int illum;
   //  int   textureId;
 };
+
+vec4 getCompressedData(InstanceData instanceData) {
+  return instanceData.compressedData;
+}
+
+uint getObjIndex(vec4 compressedData) { return uint(compressedData.x); }
+
+uint getVertexOffset(ObjOffsetData objOffsetData) {
+  return objOffsetData.vertexOffset;
+}
+
+uint getIndexOffset(ObjOffsetData objOffsetData) {
+  return objOffsetData.indexOffset;
+}
+
+mat3 getNormalMatrix(InstanceData instanceData) {
+  return instanceData.normalMatrix;
+}
+
+mat4 getModelMatrix(InstanceData instanceData) {
+  return instanceData.modelMatrix;
+}
 
 vec3 _getMaterialAmbient(PhongMaterial mat) { return vec3(mat.ambient); }
 
@@ -60,19 +81,21 @@ vec3 _getMaterialSpecular(PhongMaterial mat) { return vec3(mat.specular); }
 
 float _getMaterialShiniess(PhongMaterial mat) { return mat.compressedData.x; }
 
-uint _getMaterialIllum(PhongMaterial mat) { return uint(mat.compressedData.y); }
+uint getMaterialIllum(PhongMaterial mat) { return uint(mat.compressedData.y); }
+
+float getMaterialDissolve(PhongMaterial mat) { return mat.compressedData.z; }
 
 vec3 computeDiffuse(PhongMaterial mat, vec3 lightDir, vec3 normal) {
   // Lambertian
   float dotNL = max(dot(normal, lightDir), 0.0);
   vec3 c = _getMaterialDiffuse(mat) * dotNL;
-  if (_getMaterialIllum(mat) >= 1)
+  if (getMaterialIllum(mat) >= 1)
     return c + _getMaterialAmbient(mat);
 }
 
 vec3 computeSpecular(PhongMaterial mat, vec3 viewDir, vec3 lightDir,
                      vec3 normal) {
-  if (_getMaterialIllum(mat) < 2)
+  if (getMaterialIllum(mat) < 2)
     return vec3(0);
 
   // Compute specular only if not in shadow

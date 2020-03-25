@@ -290,7 +290,13 @@ function buildDirectionLightUniformBuffer(device) {
     code: loadShaderFile(`${baseShaderPath}/screen.frag`)
   });
 
+
+    console.log("ggsddfsf");
+
   let shaderBindingTable = createShaderBindingTable(baseShaderPath, device);
+
+
+    console.log("bbb");
 
 
 
@@ -345,7 +351,7 @@ function buildDirectionLightUniformBuffer(device) {
     bindings: [
       {
         binding: 0,
-        visibility: GPUShaderStage.RAY_CLOSEST_HIT,
+        visibility: GPUShaderStage.RAY_CLOSEST_HIT | GPUShaderStage.RAY_ANY_HIT,
         type: "readonly-storage-buffer"
       },
       {
@@ -365,7 +371,7 @@ function buildDirectionLightUniformBuffer(device) {
       },
       {
         binding: 4,
-        visibility: GPUShaderStage.RAY_CLOSEST_HIT,
+        visibility: GPUShaderStage.RAY_CLOSEST_HIT | GPUShaderStage.RAY_ANY_HIT,
         type: "readonly-storage-buffer"
       },
       {

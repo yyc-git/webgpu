@@ -36,13 +36,13 @@ let _buildSceneGeometryContainers = (device) => {
 
             WebGPUUtils.setSubData(0, geometryIndices, geometryIndexBuffer);
 
-
             return R.append(
                 device.createRayTracingAccelerationContainer({
                     level: "bottom",
                     flags: GPURayTracingAccelerationContainerFlag.PREFER_FAST_TRACE,
                     geometries: [{
-                        flags: GPURayTracingAccelerationGeometryFlag.OPAQUE,
+                        // flags: GPURayTracingAccelerationGeometryFlag.OPAQUE,
+                        flags: GPURayTracingAccelerationGeometryFlag.ALLOW_ANY_HIT,
                         type: "geometrys",
                         vertex: {
                             buffer: geometryVertexBuffer,

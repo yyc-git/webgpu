@@ -85,8 +85,8 @@ export let getSceneIndexData = () => {
     ]
 };
 
-let _buildPhongMaterialData = (ambient, diffuse, specular, shininess, illum) => {
-    return [ambient, diffuse, specular, [shininess, illum]];
+let _buildPhongMaterialData = (ambient, diffuse, specular, shininess, illum, dissolve) => {
+    return [ambient, diffuse, specular, [shininess, illum, dissolve]];
 };
 
 export let getScenePhongMaterialData = () => {
@@ -96,14 +96,16 @@ export let getScenePhongMaterialData = () => {
             [1.0, 0.0, 0.0],
             [0.2, 0.0, 1.0],
             36.0,
-            2
+            4,
+            0.2
         ),
         _buildPhongMaterialData(
             [0.1, 0.1, 0.1],
             [0.0, 1.0, 0.0],
             [0.5, 0.0, 0.5],
             72.0,
-            2
+            2,
+            1
         )
     ]
 };

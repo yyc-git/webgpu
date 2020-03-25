@@ -24,8 +24,11 @@ uCamera;
 
 void main() {
   vec4 constantsCompressedData = pushC.compressedData;
-  uint frame = getFrame(constantsCompressedData);
-  uint nbsamples = getNBSamples(constantsCompressedData);
+  // uint frame = getFrame(constantsCompressedData);
+  // uint nbsamples = getNBSamples(constantsCompressedData);
+
+  uint frame = 0;
+  uint nbsamples = 1;
 
   // Initialize the random number
   uint seed = tea(gl_LaunchIDNV.y * gl_LaunchSizeNV.x + gl_LaunchIDNV.x, frame);
@@ -47,9 +50,13 @@ void main() {
     vec4 target = uCamera.projectionInverse * vec4(d.x, d.y, 1, 1);
     vec4 direction = uCamera.viewInverse * vec4(normalize(target.xyz), 0);
 
-    uint rayFlags = gl_RayFlagsOpaqueNV;
+    // uint rayFlags = gl_RayFlagsOpaqueNV;
+    uint rayFlags = gl_RayFlagsNoneNV;
     float tMin = 0.001;
     float tMax = 10000.0;
+
+    prd.seed =
+        tea(gl_LaunchIDNV.y * gl_LaunchSizeNV.x + gl_LaunchIDNV.x, frame);
 
     traceNV(topLevelAS,    // acceleration structure
             rayFlags,      // rayFlags

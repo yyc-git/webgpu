@@ -8,7 +8,6 @@
 #include "raycommon.glsl"
 #include "wavefront.glsl"
 
-
 layout(location = 0) rayPayloadInNV hitPayload prd;
 layout(location = 1) rayPayloadNV bool isShadowed;
 
@@ -46,30 +45,8 @@ InstanceData getInstanceData(int instanceIndex) {
   return sceneDesc.i[instanceIndex];
 }
 
-vec4 getCompressedData(InstanceData instanceData) {
-  return instanceData.compressedData;
-}
-
-uint getObjIndex(vec4 compressedData) { return uint(compressedData.x); }
-
 ObjOffsetData getObjOffsetData(uint objIndex) {
   return sceneObjOffsetData.o[objIndex];
-}
-
-uint getVertexOffset(ObjOffsetData objOffsetData) {
-  return objOffsetData.vertexOffset;
-}
-
-uint getIndexOffset(ObjOffsetData objOffsetData) {
-  return objOffsetData.indexOffset;
-}
-
-mat3 getNormalMatrix(InstanceData instanceData) {
-  return instanceData.normalMatrix;
-}
-
-mat4 getModelMatrix(InstanceData instanceData) {
-  return instanceData.modelMatrix;
 }
 
 PhongMaterial getMaterial(uint objIndex) { return materials.m[objIndex]; }
@@ -94,7 +71,6 @@ void main() {
   ObjOffsetData objOffsetData = getObjOffsetData(objIndex);
   uint vertexOffset = getVertexOffset(objOffsetData);
   uint indexOffset = getIndexOffset(objOffsetData);
-
 
   // Indices of the triangle
   ivec3 ind = getTriangleIndices(indexOffset, gl_PrimitiveID);
@@ -146,8 +122,9 @@ void main() {
     // vec3 origin = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_HitTNV;
     vec3 origin = worldPos;
     vec3 rayDir = lightDir;
-    uint flags = gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsOpaqueNV |
-                 gl_RayFlagsSkipClosestHitShaderNV;
+    // uint flags = gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsOpaqueNV |
+    //              gl_RayFlagsSkipClosestHitShaderNV;
+    uint flags = gl_RayFlagsSkipClosestHitShaderNV;
     isShadowed = true;
     traceNV(topLevelAS, // acceleration structure
             flags,      // rayFlags

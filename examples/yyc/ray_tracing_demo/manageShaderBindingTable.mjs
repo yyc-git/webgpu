@@ -1,12 +1,14 @@
 import { loadShaderFile } from "./inliner.mjs";
 
 let _createRtShaderModule = (baseShaderPath, device) => {
-    // ray-tracing shaders
     let rayGenShaderModule = device.createShaderModule({
         code: loadShaderFile(`${baseShaderPath}/ray-generation.rgen`)
     });
-    let rayCHitShaderModule = device.createShaderModule({
+    let rayChitShaderModule = device.createShaderModule({
         code: loadShaderFile(`${baseShaderPath}/ray-closest-hit.rchit`)
+    });
+    let rayAhitShaderModule = device.createShaderModule({
+        code: loadShaderFile(`${baseShaderPath}/ray-any-hit.rahit`)
     });
     let rayMissShaderModule = device.createShaderModule({
         code: loadShaderFile(`${baseShaderPath}/ray-miss.rmiss`)
@@ -15,12 +17,11 @@ let _createRtShaderModule = (baseShaderPath, device) => {
         code: loadShaderFile(`${baseShaderPath}/ray-shadow-miss.rmiss`)
     });
 
-    return [rayGenShaderModule, rayCHitShaderModule, [rayMissShaderModule, rayShadowMissShaderModule]];
+    return [rayGenShaderModule, rayChitShaderModule, rayAhitShaderModule, [rayMissShaderModule, rayShadowMissShaderModule]];
 };
 
-
 export let createShaderBindingTable = (baseShaderPath, device) => {
-    let [rayGenShaderModule, rayCHitShaderModule, [rayMissShaderModule, rayShadowMissShaderModule]] = _createRtShaderModule(baseShaderPath, device);
+    let [rayGenShaderModule, rayChitShaderModule, rayAhitShaderModule, [rayMissShaderModule, rayShadowMissShaderModule]] = _createRtShaderModule(baseShaderPath, device);
 
     // collection of shader modules which get dynamically
     // invoked, for example when calling traceNV
@@ -33,8 +34,12 @@ export let createShaderBindingTable = (baseShaderPath, device) => {
                 stage: GPUShaderStage.RAY_GENERATION
             },
             {
-                module: rayCHitShaderModule,
+                module: rayChitShaderModule,
                 stage: GPUShaderStage.RAY_CLOSEST_HIT
+            },
+            {
+                module: rayAhitShaderModule,
+                stage: GPUShaderStage.RAY_ANY_HIT
             },
             {
                 module: rayMissShaderModule,
@@ -63,14 +68,14 @@ export let createShaderBindingTable = (baseShaderPath, device) => {
             {
                 type: "triangle-hit-group",
                 generalIndex: -1,
-                anyHitIndex: -1,
-                closestHitIndex: 1, // ray closest-hit shader index
+                anyHitIndex: 2,
+                closestHitIndex: 1, 
                 intersectionIndex: -1
             },
             // miss group
             {
                 type: "general",
-                generalIndex: 2, // ray miss shader index
+                generalIndex: 3, // ray miss shader index
                 anyHitIndex: -1,
                 closestHitIndex: -1,
                 intersectionIndex: -1
@@ -78,7 +83,7 @@ export let createShaderBindingTable = (baseShaderPath, device) => {
             // miss group
             {
                 type: "general",
-                generalIndex: 3, // ray miss shader index
+                generalIndex: 4, // ray miss shader index
                 anyHitIndex: -1,
                 closestHitIndex: -1,
                 intersectionIndex: -1
