@@ -26,9 +26,12 @@ void main() {
   vec4 constantsCompressedData = pushC.compressedData;
   uint frame = getFrame(constantsCompressedData);
   uint nbsamples = getNBSamples(constantsCompressedData);
+  uint maxDepth = getMaxDepth(constantsCompressedData);
 
   // Initialize the random number
-  uint seed = tea(gl_LaunchIDNV.y * gl_LaunchSizeNV.x + gl_LaunchIDNV.x, frame);
+  uint seed = tea(gl_LaunchIDNV.y * gl_LaunchSizeNV.x + gl_LaunchIDNV.x,
+                  frame * nbsamples);
+  prd.seed = seed;
 
   vec3 hitValues = vec3(0);
 
@@ -52,32 +55,47 @@ void main() {
     float tMin = 0.001;
     float tMax = 10000.0;
 
-    prd.seed =
-        tea(gl_LaunchIDNV.y * gl_LaunchSizeNV.x + gl_LaunchIDNV.x, frame);
+    prd.done = 1;
+    prd.rayOrigin = origin.xyz;
+    prd.rayDir = direction.xyz;
+    prd.depth = 0;
+    prd.hitValue = vec3(0);
+    prd.attenuation = vec3(1.f, 1.f, 1.f);
 
-    traceNV(topLevelAS,    // acceleration structure
-            rayFlags,      // rayFlags
-            0xFF,          // cullMask
-            0,             // sbtRecordOffset
-            0,             // sbtRecordStride
-            0,             // missIndex
-            origin.xyz,    // ray origin
-            tMin,          // ray min range
-            direction.xyz, // ray direction
-            tMax,          // ray max range
-            0              // payload (location = 0)
-    );
-    hitValues += prd.hitValue;
+    for (;;) {
+      traceNV(topLevelAS, // acceleration structure
+              rayFlags,   // rayFlags
+              0xFF,       // cullMask
+              0,          // sbtRecordOffset
+              0,          // sbtRecordStride
+              0,          // missIndex
+              prd.rayOrigin, // ray origin
+              tMin,          // ray min range
+              prd.rayDir, // ray direction
+              tMax,       // ray max range
+              0           // payload (location = 0)
+      );
+
+      hitValues += prd.hitValue * prd.attenuation;
+
+      prd.depth++;
+      if (prd.done == 1 || prd.depth >= maxDepth)
+        break;
+
+      prd.done = 1; // Will stop if a reflective material isn't hit
+    }
   }
   prd.hitValue = hitValues / nbsamples;
 
-  const uint pixelIndex = gl_LaunchIDNV.y * gl_LaunchSizeNV.x + gl_LaunchIDNV.x;
+  const uint pixelIndex = gl_LaunchIDNV.y * gl_LaunchSizeNV.x +
+  gl_LaunchIDNV.x;
 
   // Do accumulation over time
   if (frame > 0) {
     float a = 1.0f / float(frame + 1);
     vec3 old_color = pixelBuffer.pixels[pixelIndex].rgb;
-    pixelBuffer.pixels[pixelIndex] = vec4(mix(old_color, prd.hitValue, a), 1.f);
+    pixelBuffer.pixels[pixelIndex] = vec4(mix(old_color, prd.hitValue,
+    a), 1.f);
   } else {
     // First frame, replace the value in the buffer
     pixelBuffer.pixels[pixelIndex] = vec4(prd.hitValue, 1.f);

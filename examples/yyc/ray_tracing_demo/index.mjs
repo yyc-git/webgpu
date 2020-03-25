@@ -31,6 +31,7 @@ function buildConstantsBuffer(device) {
   );
   constantsData[0] = AA.getFrame();
   constantsData[1] = AA.getNBSamples();
+  constantsData[2] = AA.getMaxDepth();
 
   console.log("constantsData:", constantsData)
 

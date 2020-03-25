@@ -91,7 +91,6 @@ void main() {
                 vec3(v1.normal) * barycentrics.y +
                 vec3(v2.normal) * barycentrics.z;
   // Transforming the normal to world space
-  // normal = normalize(vec3(getNormalMatrix(instanceData) * vec4(normal,
   normal = normalize(getNormalMatrix(instanceData) * normal);
 
   // Computing the coordinates of the hit position
@@ -150,7 +149,22 @@ void main() {
     }
   }
 
+  uint illum = getMaterialIllum(mat);
+  vec3 materialSpecular = getMaterialSpecular(mat);
+
+  // Reflection
+  if (illum == 3) {
+    vec3 origin = worldPos;
+    vec3 rayDir = reflect(gl_WorldRayDirectionNV, normal);
+    prd.attenuation *= materialSpecular;
+    prd.done = 0;
+    prd.rayOrigin = origin;
+    prd.rayDir = rayDir;
+  }
+
   prd.hitValue = vec3(lightIntensity * attenuation * (diffuse + specular));
+
+  // prd.hitValue = vec3(normal);
 
   // hitValue = vec3(dotNL);
 

@@ -79,7 +79,7 @@ vec3 _getMaterialAmbient(PhongMaterial mat) { return vec3(mat.ambient); }
 
 vec3 _getMaterialDiffuse(PhongMaterial mat) { return vec3(mat.diffuse); }
 
-vec3 _getMaterialSpecular(PhongMaterial mat) { return vec3(mat.specular); }
+vec3 getMaterialSpecular(PhongMaterial mat) { return vec3(mat.specular); }
 
 float _getMaterialShiniess(PhongMaterial mat) { return mat.compressedData.x; }
 
@@ -110,5 +110,5 @@ vec3 computeSpecular(PhongMaterial mat, vec3 viewDir, vec3 lightDir,
   vec3 R = reflect(-lightDir, normal);
   float specular = kEnergyConservation * pow(max(dot(V, R), 0.0), kShininess);
 
-  return vec3(_getMaterialSpecular(mat) * specular);
+  return vec3(getMaterialSpecular(mat) * specular);
 }

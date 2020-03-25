@@ -114,6 +114,14 @@ export let getScenePhongMaterialData = () => {
             36.0,
             4,
             0.2
+        ),
+        _buildPhongMaterialData(
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.95, 0.95, 0.95],
+            32.0,
+            3,
+            1
         )
     ]
 };
@@ -148,7 +156,7 @@ export let getSceneTransformDataWithGeometryIndex = () => {
             [1, 1, 1],
         )],
         [1, _buildTransformData(
-            [0, -5, 0],
+            [0, -10, 0],
             [0, 0, 0],
             [10, 10, 10],
         )],
@@ -156,6 +164,16 @@ export let getSceneTransformDataWithGeometryIndex = () => {
             [1, 0, 3],
             [0, 0, 0],
             [1, 1, 1],
+        )],
+        [1, _buildTransformData(
+            [0, 0, -5],
+            [90, 0, 0],
+            [5, 5, 5],
+        )],
+        [1, _buildTransformData(
+            [0, 0, 5],
+            [-90, 0, 0],
+            [5, 5, 5],
         )]
     ]
 };
@@ -309,6 +327,8 @@ export let getSceneGameObjectData = () => {
         _buildGameObjectData([0, 0], 1, sceneTransformDataWithGeometryIndex),
         _buildGameObjectData([1, 1], 2, sceneTransformDataWithGeometryIndex),
         _buildGameObjectData([0, 2], 3, sceneTransformDataWithGeometryIndex),
+        _buildGameObjectData([1, 3], 4, sceneTransformDataWithGeometryIndex),
+        _buildGameObjectData([1, 3], 5, sceneTransformDataWithGeometryIndex),
     ];
 };
 
