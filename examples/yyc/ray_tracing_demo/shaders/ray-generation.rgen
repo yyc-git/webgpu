@@ -40,7 +40,8 @@ void main() {
     float r2 = rnd(seed);
     // Subpixel jitter: send the ray through a different position inside the
     // pixel each time, to provide antialiasing.
-    vec2 subpixel_jitter = frame == 0 ? vec2(0.5f, 0.5f) : vec2(r1, r2);
+    // vec2 subpixel_jitter = frame == 0 ? vec2(0.5f, 0.5f) : vec2(r1, r2);
+    vec2 subpixel_jitter = vec2(r1, r2);
 
     const vec2 pixelCenter = vec2(gl_LaunchIDNV.xy) + subpixel_jitter;
     const vec2 inUV = pixelCenter / vec2(gl_LaunchSizeNV.xy);
