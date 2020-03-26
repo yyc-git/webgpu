@@ -365,3 +365,21 @@ export let getSceneGeometryCount = () => {
 export let isCurrentScenePictureChange = () => {
     return ManangeCameraMatrixUtils.isChange();
 }
+
+
+let _buildShaderData = (hitGroupIndex) => {
+    return hitGroupIndex;
+};
+
+export let getSceneShaderData = () => {
+    return [
+        _buildShaderData(0),
+        _buildShaderData(1),
+        _buildShaderData(0),
+        _buildShaderData(0)
+    ]
+};
+
+export let getHitGroupIndex = (gameObjectIndex, sceneShaderData) => {
+    return sceneShaderData[gameObjectIndex];
+};

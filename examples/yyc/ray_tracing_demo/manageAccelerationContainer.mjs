@@ -74,8 +74,11 @@ let _convertInstanceTransformDataToContainerTransformData = (
     }
 }
 
+let _convertHitGroupIndexToInstanceOffset = hitGroupIndex => parseInt(hitGroupIndex, 16);
+
 let _buildContainers = (device) => {
     let geometryContainers = _buildSceneGeometryContainers(device);
+    let sceneShaderData = Scene.getSceneShaderData();
 
     return [
         geometryContainers, device.createRayTracingAccelerationContainer({
@@ -87,7 +90,8 @@ let _buildContainers = (device) => {
                         flags: GPURayTracingAccelerationInstanceFlag.TRIANGLE_CULL_DISABLE,
                         mask: 0xFF,
                         instanceId: i,
-                        instanceOffset: 0x0,
+                        // instanceOffset: 0x0,
+                        instanceOffset: _convertHitGroupIndexToInstanceOffset(Scene.getHitGroupIndex(i, sceneShaderData)),
                         transform: _convertInstanceTransformDataToContainerTransformData(transformData),
                         geometryContainer: geometryContainers[geometryIndex]
                     }, instances);
