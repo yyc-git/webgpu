@@ -356,7 +356,7 @@ export let getSceneGeometryOffsetData = () => {
     ];
 };
 
-export let getSceneInstanCount = () => {
+export let getSceneGameObjectCount = () => {
     return getSceneGameObjectData().length;
 }
 

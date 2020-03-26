@@ -55,10 +55,10 @@ function buildCameraBuffer(device) {
 
 
 function buildSceneDescBuffer(device) {
-  let instanceCount = Scene.getSceneInstanCount();
+  let gameObjectCount = Scene.getSceneGameObjectCount();
 
   let sceneDescDataCount = 4 + 12 + 16;
-  let sceneDescBufferSize = instanceCount * sceneDescDataCount * Float32Array.BYTES_PER_ELEMENT;
+  let sceneDescBufferSize = gameObjectCount * sceneDescDataCount * Float32Array.BYTES_PER_ELEMENT;
   let sceneDescBuffer = device.createBuffer({
     size: sceneDescBufferSize,
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
@@ -119,10 +119,10 @@ function buildSceneGeometryOffsetDataBuffer(device) {
 
 
 function buildIndexBuffer(device) {
-  let instanceCount = Scene.getSceneInstanCount();
+  let gameObjectCount = Scene.getSceneGameObjectCount();
 
   let indexDataCount = 3;
-  let indexBufferSize = instanceCount * indexDataCount * Uint32Array.BYTES_PER_ELEMENT;
+  let indexBufferSize = gameObjectCount * indexDataCount * Uint32Array.BYTES_PER_ELEMENT;
   let indexBuffer = device.createBuffer({
     size: indexBufferSize,
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
@@ -620,7 +620,6 @@ function buildDirectionLightUniformBuffer(device) {
       );
       passEncoder.endPass();
       queue.submit([commandEncoder.finish()]);
-
     }
     // rasterization pass
     // the rasterization's pass only use right now,
