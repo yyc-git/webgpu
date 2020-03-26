@@ -158,7 +158,7 @@ export let getSceneTransformDataWithGeometryIndex = () => {
         [1, _buildTransformData(
             [0, -10, 0],
             [0, 0, 0],
-            [10, 10, 10],
+            [20, 20, 20],
         )],
         [0, _buildTransformData(
             [1, 0, 3],
@@ -166,15 +166,20 @@ export let getSceneTransformDataWithGeometryIndex = () => {
             [1, 1, 1],
         )],
         [1, _buildTransformData(
-            [0, 0, -5],
-            [90, 0, 0],
-            [5, 5, 5],
+            [20, 0, 0],
+            [0, 0, 90],
+            [10, 10, 10],
         )],
         [1, _buildTransformData(
-            [0, 0, 5],
-            [-90, 0, 0],
-            [5, 5, 5],
-        )]
+            [-20, 0, 0],
+            [0, 0, -90],
+            [10, 10, 10],
+        )],
+        // [1, _buildTransformData(
+        //     [0, 0, 5],
+        //     [-90, 0, 0],
+        //     [5, 5, 5],
+        // )]
     ]
 };
 

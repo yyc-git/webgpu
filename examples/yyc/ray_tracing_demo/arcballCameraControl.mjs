@@ -3,7 +3,7 @@ let _theta = Math.PI / 2;
 let _target = [0.0, 0.0, 0.0];
 let _rotateSpeed = 1;
 let _wheelSpeed = 1;
-let _distance = 30;
+let _distance = 20;
 
 let _isDrag = false;
 
