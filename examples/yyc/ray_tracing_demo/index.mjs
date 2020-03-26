@@ -11,6 +11,7 @@ import { createShaderBindingTable } from "./manageShaderBindingTable.mjs";
 import * as ArcballCameraControl from './arcballCameraControl.mjs';
 import * as ManangeCameraMatrixUtils from "./manangeCameraMatrixUtils.mjs";
 import * as AA from "./aa.mjs";
+import * as Reflect from "./reflect.mjs";
 
 
 Object.assign(global, WebGPU);
@@ -31,7 +32,7 @@ function buildConstantsBuffer(device) {
   );
   constantsData[0] = AA.getFrame();
   constantsData[1] = AA.getNBSamples();
-  constantsData[2] = AA.getMaxDepth();
+  constantsData[2] = Reflect.getMaxDepth();
 
   console.log("constantsData:", constantsData)
 

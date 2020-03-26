@@ -4,7 +4,6 @@ const MAX_FRAME = 10;
 
 let _frame = 0;
 let _nbsamples = 10;
-let _maxDepth = 10;
 
 // let _increaseFrame = (constantsData) => {
 //     constantsData[0] += 1;
@@ -59,5 +58,3 @@ export let updateFrame = () => {
 }
 
 export let getNBSamples = () => _nbsamples;
-
-export let getMaxDepth = () => _maxDepth;
