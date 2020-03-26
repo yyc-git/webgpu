@@ -12,6 +12,7 @@ import * as ArcballCameraControl from './arcballCameraControl.mjs';
 import * as ManangeCameraMatrixUtils from "./manangeCameraMatrixUtils.mjs";
 import * as AA from "./aa.mjs";
 import * as Reflect from "./reflect.mjs";
+import { performance } from "perf_hooks";
 
 
 Object.assign(global, WebGPU);
@@ -306,7 +307,7 @@ function buildDirectionLightUniformBuffer(device) {
 
 
 
-  let instanceContainer = ManageAccelartionContainer.buildContainers(device, queue);
+  let [instanceBufferArrayBuffer, instanceBuffer, instanceContainer] = ManageAccelartionContainer.buildContainers(device, queue);
 
 
 
@@ -592,10 +593,23 @@ function buildDirectionLightUniformBuffer(device) {
     _updateConstantsUniformBuffer(AA.getFrame(), [constantsData, constantsBuffer])
   }
 
+  let startTime = performance.now();
+
   function onFrame() {
     if (!window.shouldClose()) setTimeout(onFrame, 1e3 / 60);
 
+    let time = performance.now() - startTime;
+
     _updateUniformBuffers([cameraData, cameraBuffer], [constantsData, constantsBuffer]);
+
+
+
+    [instanceBufferArrayBuffer, instanceBuffer, instanceContainer] = Scene.update([device, queue], time, [instanceBufferArrayBuffer, instanceBuffer, instanceContainer]);
+
+
+
+
+
 
     let backBufferView = swapChain.getCurrentTextureView();
 

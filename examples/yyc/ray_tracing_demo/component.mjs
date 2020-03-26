@@ -57,10 +57,22 @@ export let Transform = (function () {
         return _transformDataMap;
     };
 
+
+
+    let _getTransformData = (transformIndex) => {
+        return _transformDataMap[transformIndex];
+    };
+
+    let _setTransformData = (transformIndex, transformData) => {
+        _transformDataMap[transformIndex] = transformData;
+    };
+
     return {
         init: _init,
         copyTransformData: _copyTransformData,
         getSceneTransformData: _getSceneTransformData,
+        getTransformData: _getTransformData,
+        setTransformData: _setTransformData
     }
 }());
 
@@ -270,5 +282,41 @@ export let Shader = (function () {
     return {
         init: _init,
         getSceneShaderData: _getSceneShaderData
+    }
+}());
+
+export let TransformAnimation = (function () {
+    let _dynamicTransformIndexArr = [];
+    let _isAnimateFlag = false;
+
+    let _update = (time, transformData) => {
+        let copiedTransformData = Transform.copyTransformData(transformData);
+        copiedTransformData.rotation.y = (copiedTransformData.rotation.y + time / 2000) % 360;
+
+
+        return copiedTransformData;
+    };
+
+    let _init = () => {
+        _dynamicTransformIndexArr = [1];
+    };
+
+    let _updateAll = (time) => {
+        _isAnimateFlag = _dynamicTransformIndexArr.length > 0;
+
+        _dynamicTransformIndexArr.forEach((transformIndex) => {
+            Transform.setTransformData(
+                transformIndex,
+                _update(time, Transform.getTransformData(transformIndex))
+            );
+        });
+    };
+
+    let _isAnimate = () => _isAnimateFlag;
+
+    return {
+        init: _init,
+        updateAll: _updateAll,
+        isAnimate: _isAnimate
     }
 }());

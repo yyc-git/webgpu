@@ -4,6 +4,8 @@ import * as TypeArrayUtils from "./typearrayUtils.mjs";
 import R from "ramda";
 import glMatrix from "gl-matrix";
 
+let _geometryContainers = null;
+
 let _buildSceneGeometryContainers = (device) => {
     return R.zipWith(
         (vertexData, indexData) => {
@@ -175,13 +177,8 @@ let InstanceBuffer = (function () {
 }());
 
 
-let _buildContainers = (device) => {
-    let geometryContainers = _buildSceneGeometryContainers(device);
+let _updateInstanceBuffer = (geometryContainers, [instanceBufferArrayBuffer, instanceBuffer]) => {
     let sceneShaderData = Scene.getSceneShaderData();
-    let [instanceBufferArrayBuffer, instanceBuffer] = InstanceBuffer.createInstanceBuffer(
-        Scene.getSceneGameObjectCount(),
-        device
-    );
 
     instanceBufferArrayBuffer =
         Scene.getSceneTransformDataWithGeometryIndex()
@@ -195,30 +192,37 @@ let _buildContainers = (device) => {
         instanceBufferArrayBuffer, instanceBuffer
     );
 
+    return [instanceBufferArrayBuffer, instanceBuffer];
+};
+
+let _createInstanceContainer = (geometryContainers, device) => {
+    let [instanceBufferArrayBuffer, instanceBuffer] =
+        R.pipe(
+            InstanceBuffer.createInstanceBuffer,
+            R.curry(_updateInstanceBuffer)(geometryContainers)
+        )(
+            Scene.getSceneGameObjectCount(),
+            device
+        );
+
+    return [instanceBufferArrayBuffer, instanceBuffer, device.createRayTracingAccelerationContainer({
+        level: "top",
+        flags: GPURayTracingAccelerationContainerFlag.PREFER_FAST_TRACE | GPURayTracingAccelerationContainerFlag.ALLOW_UPDATE,
+        instanceBuffer
+    })];
+};
+
+
+let _buildContainers = (device) => {
+    let geometryContainers = _buildSceneGeometryContainers(device);
+
     return [
-        geometryContainers, device.createRayTracingAccelerationContainer({
-            level: "top",
-            // flags: GPURayTracingAccelerationContainerFlag.PREFER_FAST_TRACE | GPURayTracingAccelerationContainerFlag.ALLOW_UPDATE,
-            flags: GPURayTracingAccelerationContainerFlag.PREFER_FAST_TRACE,
-            // instances: Scene.getSceneTransformDataWithGeometryIndex()
-            //     .reduce((instances, [geometryIndex, transformData], i) => {
-            //         return R.append({
-            //             flags: GPURayTracingAccelerationInstanceFlag.TRIANGLE_CULL_DISABLE,
-            //             mask: 0xFF,
-            //             instanceId: i,
-            //             // instanceOffset: 0x0,
-            //             instanceOffset: _convertHitGroupIndexToInstanceOffset(Scene.getHitGroupIndex(i, sceneShaderData)),
-            //             transform: _convertInstanceTransformDataToContainerTransformData(transformData),
-            //             geometryContainer: geometryContainers[geometryIndex]
-            //         }, instances);
-            //     }, [])
-            instanceBuffer
-        })
+        geometryContainers, _createInstanceContainer(geometryContainers, device)
     ];
 };
 
 export let buildContainers = (device, queue) => {
-    let [geometryContainers, instanceContainer] = _buildContainers(device);
+    let [geometryContainers, [instanceBufferArrayBuffer, instanceBuffer, instanceContainer]] = _buildContainers(device);
 
     // build the containers (the order is important)
     // geometry containers have to be built before
@@ -232,5 +236,21 @@ export let buildContainers = (device, queue) => {
         queue.submit([commandEncoder.finish()]);
     }
 
-    return instanceContainer;
+    _geometryContainers = geometryContainers;
+
+    return [instanceBufferArrayBuffer, instanceBuffer, instanceContainer];
 };
+
+
+// TODO perf: only update transform matrix data
+export let updateInstanceContainer = ([device, queue], [instanceBufferArrayBuffer, instanceBuffer, instanceContainer]) => {
+    var [instanceBufferArrayBuffer, instanceBuffer] = _updateInstanceBuffer(_geometryContainers, [instanceBufferArrayBuffer, instanceBuffer]);
+
+    {
+        let commandEncoder = device.createCommandEncoder({});
+        commandEncoder.updateRayTracingAccelerationContainer(instanceContainer);
+        queue.submit([commandEncoder.finish()]);
+    }
+
+    return [instanceBufferArrayBuffer, instanceBuffer, instanceContainer];
+}

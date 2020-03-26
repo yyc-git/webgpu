@@ -4,6 +4,7 @@ import * as Component from "./component.mjs";
 import * as GameObject from "./gameObject.mjs";
 import * as ArcballCameraControl from './arcballCameraControl.mjs';
 import * as ManangeCameraMatrixUtils from "./manangeCameraMatrixUtils.mjs";
+import * as ManageAccelartionContainer from "./manageAccelerationContainer.mjs";
 
 export let getSceneVertexData = () => {
     return Component.Geometry.getSceneVertexData();
@@ -201,7 +202,7 @@ export let getSceneGeometryCount = () => {
 
 // TODO refactor: use event observer?
 export let isCurrentScenePictureChange = () => {
-    return ManangeCameraMatrixUtils.isChange();
+    return ManangeCameraMatrixUtils.isChange() || Component.TransformAnimation.isAnimate();
 }
 
 export let getSceneShaderData = () => {
@@ -221,6 +222,13 @@ export let init = (window) => {
     Component.PhongMaterial.init();
     Component.DirectionLight.init();
     Component.Shader.init();
+    Component.TransformAnimation.init();
 
     GameObject.init();
+};
+
+export let update = ([device, queue], time, [instanceBufferArrayBuffer, instanceBuffer, instanceContainer]) => {
+    Component.TransformAnimation.updateAll(time);
+
+    return ManageAccelartionContainer.updateInstanceContainer([device, queue], [instanceBufferArrayBuffer, instanceBuffer, instanceContainer]);
 };
