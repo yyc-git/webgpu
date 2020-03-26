@@ -1,200 +1,33 @@
 import R from "ramda";
 import glMatrix from "gl-matrix";
-import * as TypeArrayUtils from "./typearrayUtils.mjs";
+import * as Component from "./component.mjs";
+import * as GameObject from "./gameObject.mjs";
+import * as ArcballCameraControl from './arcballCameraControl.mjs';
 import * as ManangeCameraMatrixUtils from "./manangeCameraMatrixUtils.mjs";
 
-let _buildTriangleVertexData = () => {
-    let vertices = [
-        0.0, 1.0, 0.0,
-        -1.0, -1.0, 0.0,
-        1.0, -1.0, 0.0
-    ];
-    let normals = [
-        0.0, 0.0, 1.0,
-        0.0, 0.0, 1.0,
-        0.0, 0.0, 1.0
-    ];
-    let texCoords = [
-        0.5, 1.0,
-        0.0, 0.0,
-        1.0, 0.0
-    ];
-
-    return [
-        vertices, normals, texCoords
-    ]
-}
-
-let _buildTriangleIndexData = () => {
-    let indices = [
-        0, 1, 2
-    ];
-
-    return indices;
-}
-
-
-
-let _buildPlaneVertexData = () => {
-    let vertices = [
-        1.0, 0.0, -1.0,
-        1.0, 0.0, 1.0,
-        -1.0, 0.0, 1.0,
-        -1.0, 0.0, -1.0
-    ];
-    let normals = [
-        0.0, 1.0, 0.0,
-        0.0, 1.0, 0.0,
-        0.0, 1.0, 0.0,
-        0.0, 1.0, 0.0
-    ];
-    let texCoords = [
-        0.0, 1.0,
-        1.0, 1.0,
-        1.0, 0.0,
-        0.0, 0.0
-    ];
-
-    return [
-        vertices, normals, texCoords
-    ]
-}
-
-let _buildPlaneIndexData = () => {
-    let indices = [
-        2, 1, 0,
-        0, 3, 2
-    ];
-
-    return indices;
-}
-
-
 export let getSceneVertexData = () => {
-    return [
-        _buildTriangleVertexData(),
-        _buildPlaneVertexData()
-    ]
+    return Component.Geometry.getSceneVertexData();
 };
-
 
 export let getSceneIndexData = () => {
-    return [
-        _buildTriangleIndexData(),
-        _buildPlaneIndexData()
-    ]
-};
-
-let _buildPhongMaterialData = (ambient, diffuse, specular, shininess, illum, dissolve) => {
-    return [ambient, diffuse, specular, [shininess, illum, dissolve]];
+    return Component.Geometry.getSceneIndexData();
 };
 
 export let getScenePhongMaterialData = () => {
-    return [
-        _buildPhongMaterialData(
-            [0.1, 0.1, 0.1],
-            [1.0, 0.0, 0.0],
-            [0.2, 0.0, 1.0],
-            36.0,
-            2,
-            1
-        ),
-        _buildPhongMaterialData(
-            [0.1, 0.1, 0.1],
-            [0.0, 1.0, 0.0],
-            [0.5, 0.0, 0.5],
-            72.0,
-            2,
-            1
-        ),
-        _buildPhongMaterialData(
-            [0.1, 0.1, 0.1],
-            [0.0, 0.0, 1.0],
-            [0.2, 0.0, 1.0],
-            36.0,
-            4,
-            0.2
-        ),
-        _buildPhongMaterialData(
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0],
-            [0.95, 0.95, 0.95],
-            32.0,
-            3,
-            1
-        )
-    ]
+    return Component.PhongMaterial.getScenePhongMaterialData();
 };
 
-
-export let computeScenePhongMaterialBufferDataLength = () => {
-    return R.multiply(
-        4 * 4,
-        getScenePhongMaterialData().length
-    )
-};
-
-
-let _buildTransformData = (translation, rotation, scale) => {
-    return {
-        translation: { x: translation[0], y: translation[1], z: translation[2] },
-        rotation: { x: rotation[0], y: rotation[1], z: rotation[2] },
-        scale: { x: scale[0], y: scale[1], z: scale[2] }
-    }
-};
+export let computeScenePhongMaterialBufferDataLength = Component.PhongMaterial.computeScenePhongMaterialBufferDataLength;
 
 export let getSceneTransformDataWithGeometryIndex = () => {
-    return [
-        [0, _buildTransformData(
-            [0, 0, 0],
-            [0, 0, 0],
-            [1, 1, 1],
-        )],
-        [0, _buildTransformData(
-            [3, 0, 0],
-            [0, 0, 0],
-            [1, 1, 1],
-        )],
-        [1, _buildTransformData(
-            [0, -10, 0],
-            [0, 0, 0],
-            [20, 20, 20],
-        )],
-        [0, _buildTransformData(
-            [1, 0, 3],
-            [0, 0, 0],
-            [1, 1, 1],
-        )],
-        [1, _buildTransformData(
-            [20, 0, 0],
-            [0, 0, 90],
-            [10, 10, 10],
-        )],
-        [1, _buildTransformData(
-            [-20, 0, 0],
-            [0, 0, -90],
-            [10, 10, 10],
-        )],
-        // [1, _buildTransformData(
-        //     [0, 0, 5],
-        //     [-90, 0, 0],
-        //     [5, 5, 5],
-        // )]
-    ]
+    return Component.Transform.getSceneTransformData()
+        .map((transformData, gameObjectIndex) => {
+            return [GameObject.getGeometryIndex(gameObjectIndex), transformData];
+        })
 };
 
 export let getSceneDirectionLightData = () => {
-    return TypeArrayUtils.newFloat32Array([
-        1.0,
-        0.0,
-        0.0,
-        0.0,
-
-        0.0,
-        1.0,
-        1.0,
-        0.0
-    ])
+    return Component.DirectionLight.getSceneDirectionLightData();
 };
 
 
@@ -305,7 +138,7 @@ let _buildNormalMatrix = (modelMatrix) => {
 };
 
 
-let _buildGameObjectData = ([geometryIndex, materialIndex], gameObjectIndex, sceneTransformDataWithGeometryIndex) => {
+let _buildGameObjectData = (gameObjectIndex, sceneTransformDataWithGeometryIndex) => {
     let modelMatrix = R.pipe(
         _getTransformData,
         _buildModelMatrix
@@ -316,8 +149,8 @@ let _buildGameObjectData = ([geometryIndex, materialIndex], gameObjectIndex, sce
 
     return [
         [
-            geometryIndex,
-            materialIndex,
+            GameObject.getGeometryIndex(gameObjectIndex),
+            GameObject.getMaterialIndex(gameObjectIndex),
         ],
         _buildNormalMatrix(modelMatrix),
         modelMatrix
@@ -328,12 +161,12 @@ export let getSceneGameObjectData = () => {
     let sceneTransformDataWithGeometryIndex = getSceneTransformDataWithGeometryIndex();
 
     return [
-        _buildGameObjectData([0, 0], 0, sceneTransformDataWithGeometryIndex),
-        _buildGameObjectData([0, 0], 1, sceneTransformDataWithGeometryIndex),
-        _buildGameObjectData([1, 1], 2, sceneTransformDataWithGeometryIndex),
-        _buildGameObjectData([0, 2], 3, sceneTransformDataWithGeometryIndex),
-        _buildGameObjectData([1, 3], 4, sceneTransformDataWithGeometryIndex),
-        _buildGameObjectData([1, 3], 5, sceneTransformDataWithGeometryIndex),
+        _buildGameObjectData(0, sceneTransformDataWithGeometryIndex),
+        _buildGameObjectData(1, sceneTransformDataWithGeometryIndex),
+        _buildGameObjectData(2, sceneTransformDataWithGeometryIndex),
+        _buildGameObjectData(3, sceneTransformDataWithGeometryIndex),
+        _buildGameObjectData(4, sceneTransformDataWithGeometryIndex),
+        _buildGameObjectData(5, sceneTransformDataWithGeometryIndex),
     ];
 };
 
@@ -371,20 +204,23 @@ export let isCurrentScenePictureChange = () => {
     return ManangeCameraMatrixUtils.isChange();
 }
 
-
-let _buildShaderData = (hitGroupIndex) => {
-    return hitGroupIndex;
-};
-
 export let getSceneShaderData = () => {
-    return [
-        _buildShaderData(0),
-        _buildShaderData(1),
-        _buildShaderData(0),
-        _buildShaderData(0)
-    ]
+    return Component.Shader.getSceneShaderData();
 };
 
 export let getHitGroupIndex = (gameObjectIndex, sceneShaderData) => {
     return sceneShaderData[gameObjectIndex];
+};
+
+export let init = (window) => {
+    ArcballCameraControl.init(window);
+    ManangeCameraMatrixUtils.init();
+
+    Component.Transform.init();
+    Component.Geometry.init();
+    Component.PhongMaterial.init();
+    Component.DirectionLight.init();
+    Component.Shader.init();
+
+    GameObject.init();
 };

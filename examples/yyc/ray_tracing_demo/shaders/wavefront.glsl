@@ -1,8 +1,4 @@
 struct InstanceData {
-  // TODO some field(e.g. objId) should be int, but treat as float
-  // because can't upload DataView!!!
-  // float vertexOffset;
-
   // TODO perf: remove compressedData by pack objId to normalMatrix
 
   /*

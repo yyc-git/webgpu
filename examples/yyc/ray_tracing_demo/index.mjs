@@ -274,10 +274,7 @@ function buildDirectionLightUniformBuffer(device) {
 
 
 
-  ArcballCameraControl.init(window);
-
-
-  ManangeCameraMatrixUtils.init();
+  Scene.init(window);
 
 
 

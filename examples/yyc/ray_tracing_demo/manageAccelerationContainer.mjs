@@ -198,6 +198,7 @@ let _buildContainers = (device) => {
     return [
         geometryContainers, device.createRayTracingAccelerationContainer({
             level: "top",
+            // flags: GPURayTracingAccelerationContainerFlag.PREFER_FAST_TRACE | GPURayTracingAccelerationContainerFlag.ALLOW_UPDATE,
             flags: GPURayTracingAccelerationContainerFlag.PREFER_FAST_TRACE,
             // instances: Scene.getSceneTransformDataWithGeometryIndex()
             //     .reduce((instances, [geometryIndex, transformData], i) => {
